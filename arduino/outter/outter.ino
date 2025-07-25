@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "BLEServiceHandler.h"
 #include "cam.h"
+#include "pinConfig.h"
 
 void setup() {
   Serial.begin(115200);
@@ -10,6 +11,8 @@ void setup() {
 
 void loop() {
   if (deviceConnected) {
-    //looptest();
+    // if(pCharacteristic->getValue() == "1"){
+    
   }
+  delay(10);
 }

@@ -8,7 +8,7 @@
 
 #include <config.h>
 
-extern BLECharacteristic *pCharacteristic;
+extern BLECharacteristic *pCharacteristic; // 0 nothing
 extern BLECharacteristic *imageCharacteristic;
 extern bool deviceConnected;
 

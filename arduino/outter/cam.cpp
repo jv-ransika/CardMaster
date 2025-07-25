@@ -2,8 +2,11 @@
 #include "BLEServiceHandler.h"
 
 
-#define CAMERA_MODEL_WROVER_KIT // Has PSRAM
+// #define CAMERA_MODEL_AI_THINKER
+#define CAMERA_MODEL_WROVER_KIT
 #include "camera_pins.h"
+
+bool readyForNextChunk = true;
 
 
 void camInit(){
@@ -29,7 +32,7 @@ void camInit(){
   config.pin_reset = RESET_GPIO_NUM;
   config.xclk_freq_hz = 20000000;
   config.frame_size = FRAMESIZE_VGA;
-  config.pixel_format = PIXFORMAT_JPEG;
+  config.pixel_format = PIXFORMAT_RGB565;
   config.grab_mode = CAMERA_GRAB_LATEST;
   config.fb_location = CAMERA_FB_IN_PSRAM;
   config.jpeg_quality = 10;
@@ -43,6 +46,13 @@ void camInit(){
 }
 
 void sendImageBLE() {
+  if (!deviceConnected) {
+    Serial.println("No device connected. Cannot send image.");
+    return;
+  }
+
+  readyForNextChunk = true;
+
   camera_fb_t *fb = esp_camera_fb_get();
   if (!fb) {
     Serial.println("Camera capture failed");
@@ -50,14 +60,26 @@ void sendImageBLE() {
   }
 
   int len = fb->len;
-  int chunkSize = 512; // Adjust based on MTU
+  int chunkSize = 500; // Adjust based on MTU
   int offset = 0;
 
+  Serial.printf("Starting image transfer: %d bytes\n", len);
+
   while (offset < len) {
+    readyForNextChunk = false;
+
+    // It's good practice to check for connection status periodically in long loops
+    if (!deviceConnected) {
+        Serial.println("Device disconnected during image transfer.");
+        break; // Exit the loop if disconnected
+    }
+
     int sendingSize = min(chunkSize, len - offset);
     imageCharacteristic->setValue(fb->buf + offset, sendingSize);
     imageCharacteristic->notify();
+    Serial.printf("Sent chunk: offset=%d, size=%d\n", offset, sendingSize);
     offset += sendingSize;
+    
     delay(20); // BLE stack needs some delay
   }
 

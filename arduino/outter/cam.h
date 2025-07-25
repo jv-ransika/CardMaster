@@ -4,6 +4,8 @@
 #include "esp_camera.h"
 #include <Arduino.h>
 
+extern bool readyForNextChunk; 
+
 void camInit();
 void sendImageBLE();
 
