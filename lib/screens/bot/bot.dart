@@ -4,6 +4,7 @@ import 'package:card_master/config.dart';
 import 'package:card_master/handlers/conn_input_handler/bot_handler.dart';
 import 'package:card_master/handlers/conn_input_handler/image_handler.dart';
 import 'package:card_master/onnx/onnx_model.dart';
+import 'package:card_master/onnx/oomi_predictor.dart';
 import 'package:card_master/screens/bot/cameras_view.dart';
 import 'package:card_master/screens/bot/connections_view.dart';
 import 'package:card_master/screens/bot/omi_board.dart';
@@ -43,6 +44,7 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
   OnnxModel oomiModel = OnnxModel(modelPath: "assets/oomi_agent.onnx");
 
   YoloDetector yoloDetector = YoloDetector();
+  OomiPredictor oomiPredictor = OomiPredictor();
 
   ImageInputHandler imageInputHandlerOuter = ImageInputHandler();
   ImageInputHandler imageInputHandlerInner = ImageInputHandler();
@@ -59,8 +61,9 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
       onNeedUpdateOuterImage: () {
         imageInputHandlerOuter.captureImage();
       },
-      onNeedUpdateInnerImage: () {
-        imageInputHandlerInner.captureImage();
+      onNeedUpdateInnerImage: () async {
+        // imageInputHandlerInner.captureImage();
+        await oomiPredictor.predict(oomiModel);
       },
     );
 
