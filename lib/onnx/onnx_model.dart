@@ -5,7 +5,6 @@ import 'package:onnxruntime/onnxruntime.dart';
 class OnnxModel {
   final String modelPath;
   OrtSession? session;
-  OrtRunOptions? runOptions;
 
   OnnxModel({required this.modelPath});
 
@@ -16,11 +15,25 @@ class OnnxModel {
 
       final options = OrtSessionOptions();
       session = OrtSession.fromBuffer(modelBytes, options);
-      runOptions = OrtRunOptions();
       debugPrint('ONNX model loaded successfully: $modelPath');
     } catch (e) {
       debugPrint('Failed to load ONNX model: $e');
     }
+  }
+
+  Future<List<OrtValue?>> runInference(Map<String, OrtValue> inputs) async {
+    if (session == null) {
+      debugPrint('Session is not initialized.');
+      return [];
+    }
+
+    final runOptions = OrtRunOptions();
+    
+    final outputs = session!.run(runOptions, inputs);
+
+    runOptions.release();
+
+    return outputs;
   }
 
   void inspectModel() {
