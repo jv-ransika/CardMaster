@@ -3,6 +3,8 @@ import 'dart:typed_data';
 import 'package:card_master/config.dart';
 import 'package:card_master/handlers/conn_input_handler/bot_handler.dart';
 import 'package:card_master/handlers/conn_input_handler/image_handler.dart';
+import 'package:card_master/onnx/onnx_model.dart';
+import 'package:card_master/screens/bot/cameras_view.dart';
 import 'package:card_master/screens/bot/connections_view.dart';
 import 'package:card_master/screens/bot/omi_board.dart';
 import 'package:card_master/tflite/tflite_model_isolate.dart';
@@ -23,9 +25,22 @@ class BotScreen extends StatefulWidget {
 }
 
 class _BotScreenState extends State<BotScreen> {
+  /*
+I/flutter (29486): Discovered device: CardMaster - OC (3C:8A:1F:D4:7C:1E)
+D/FlutterBluePlugin(29486): Discovered 08:B6:1F:8E:7A:4E
+I/flutter (29486): Discovered device: CardMaster - IC (08:B6:1F:8E:7A:4E)
+D/FlutterBluePlugin(29486): Discovered 68:25:DD:33:8C:0A
+I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
+  */
+
+  int tabIndex = 0;
+  List<Widget> tabs = [];
+
   bool isLoadingModels = true;
 
-  TfliteModelIsolate yoloModel = TfliteModelIsolate(modelPath: "assets/yolo11s_f32.tflite");
+  // TfliteModelIsolate yoloModel = TfliteModelIsolate(modelPath: "assets/yolo11s_f32.tflite");
+  TfliteModelIsolate yoloModel = TfliteModelIsolate(modelPath: "assets/yolov5nu_f16.tflite");
+  OnnxModel oomiModel = OnnxModel(modelPath: "assets/oomi_agent.onnx");
 
   YoloDetector yoloDetector = YoloDetector();
 
@@ -33,18 +48,35 @@ class _BotScreenState extends State<BotScreen> {
   ImageInputHandler imageInputHandlerInner = ImageInputHandler();
   BotInputHandler botInputHandler = BotInputHandler();
 
-  double _progress = 0.0;
-
-  bool _isDetecting = false;
-
   img.Image? _currentImage;
 
   OmiBoard omiBoard = OmiBoard();
+
+  late CamerasViewController camerasViewController;
+
+  void _initializeTabs() {
+    camerasViewController = CamerasViewController(
+      onNeedUpdateOuterImage: () {
+        imageInputHandlerOuter.captureImage();
+      },
+      onNeedUpdateInnerImage: () {
+        imageInputHandlerInner.captureImage();
+      },
+    );
+
+    tabs = [
+      ConnectionsView(inputHandlers: {"Outer Camera": imageInputHandlerOuter, "Inner Camera": imageInputHandlerInner, "Bot": botInputHandler}),
+      CamerasView(controller: camerasViewController),
+      Text("Test View"), // Placeholder for test view
+      Text("Logs View"), // Placeholder for logs view
+    ];
+  }
 
   @override
   void initState() {
     super.initState();
     _getPermissions();
+    _initializeTabs();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadModels();
@@ -55,8 +87,10 @@ class _BotScreenState extends State<BotScreen> {
     imageInputHandlerOuter.listenToOnImageCaptured((int width, int height) async {
       print("Outer Image Captured: Width: $width, Height: $height");
       _currentImage = imageInputHandlerOuter.image!;
-      _progress = 0.0;
       List<YOLODetection> detections = await detectCurrentImage();
+      camerasViewController.outerImage = _currentImage;
+      camerasViewController.progressOuterImage = 0.0;
+      camerasViewController.update();
       // omiBoard.classifyDetections(detections, _currentImage!.width.toDouble(), _currentImage!.height.toDouble());
     });
 
@@ -64,21 +98,23 @@ class _BotScreenState extends State<BotScreen> {
       print("Inner Image Captured: Width: $width, Height: $height");
       _currentImage = imageInputHandlerInner.image!;
       _currentImage = img.copyExpandCanvas(_currentImage!, newWidth: 800, newHeight: 800, backgroundColor: img.ColorRgb8(255, 255, 255));
-      _progress = 0.0;
       List<YOLODetection> detections = await detectCurrentImage();
+      camerasViewController.innerImage = _currentImage;
+      camerasViewController.progressInnerImage = 0.0;
+      camerasViewController.update();
       // Do something...
     });
 
     // Image download progress update listeners
 
     imageInputHandlerOuter.listenToOnProgressUpdate((double progress) {
-      _progress = progress;
-      setState(() {});
+      camerasViewController.progressOuterImage = progress;
+      camerasViewController.update();
     });
 
     imageInputHandlerInner.listenToOnProgressUpdate((double progress) {
-      _progress = progress;
-      setState(() {});
+      camerasViewController.progressInnerImage = progress;
+      camerasViewController.update();
     });
 
     // Bot command listener
@@ -103,6 +139,7 @@ class _BotScreenState extends State<BotScreen> {
   @override
   void dispose() {
     yoloModel.stop();
+    oomiModel.close();
     super.dispose();
   }
 
@@ -113,6 +150,8 @@ class _BotScreenState extends State<BotScreen> {
   Future<void> _loadModels() async {
     try {
       await yoloModel.start();
+      await oomiModel.loadModel();
+      oomiModel.inspectModel();
       isLoadingModels = false;
       setState(() {});
     } catch (e) {
@@ -134,18 +173,10 @@ class _BotScreenState extends State<BotScreen> {
   }
 
   Future<List<YOLODetection>> detectCurrentImage() async {
-    setState(() {
-      _isDetecting = true;
-    });
-
     try {
       List<YOLODetection> detections = await yoloDetector.detectObjects(_currentImage!, yoloModel);
 
       drawBoundaryBoxes(detections, _currentImage!);
-
-      setState(() {
-        _isDetecting = false;
-      });
 
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("YOLO detection completed.")));
 
@@ -154,17 +185,13 @@ class _BotScreenState extends State<BotScreen> {
       print('Error during YOLO detection: $e');
     }
 
-    setState(() {
-      _isDetecting = true;
-    });
-
     return [];
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("ESP32 BLE")),
+      appBar: AppBar(title: const Text("Card Master Bot")),
       body: isLoadingModels
           ? Center(
               child: Container(
@@ -176,26 +203,49 @@ class _BotScreenState extends State<BotScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-                  if (_isDetecting) LinearProgressIndicator(),
-                  ConnectionsView(inputHandlers: {"Outer Camera": imageInputHandlerOuter, "Inner Camera": imageInputHandlerInner, "Bot": botInputHandler}),
-                  ElevatedButton(
-                    onPressed: () async {
-                      imageInputHandlerOuter.captureImage();
-                    },
-                    child: const Text("Cap Outer"),
-                  ),
-                  ElevatedButton(
-                    onPressed: () async {
-                      imageInputHandlerInner.captureImage();
-                    },
-                    child: const Text("Cap Inner"),
-                  ),
-                  LinearProgressIndicator(value: _progress),
-                  // RawImage(image: _image),
-                  _currentImage != null ? Image.memory(Uint8List.fromList(img.encodePng(_currentImage!)), fit: BoxFit.contain) : Text('No oc image captured yet.'),
+                  IndexedStack(index: tabIndex, children: tabs),
+                  // ExpansionTile(
+                  //   title: Text('Connections'),
+                  //   children: <Widget>[
+                  //     ConnectionsView(inputHandlers: {"Outer Camera": imageInputHandlerOuter, "Inner Camera": imageInputHandlerInner, "Bot": botInputHandler}),
+                  //   ],
+                  // ),
+                  // if (_isDetecting) LinearProgressIndicator(),
+                  // ElevatedButton(
+                  //   onPressed: () async {
+                  //     imageInputHandlerOuter.captureImage();
+                  //   },
+                  //   child: const Text("Cap Outer"),
+                  // ),
+                  // ElevatedButton(
+                  //   onPressed: () async {
+                  //     imageInputHandlerInner.captureImage();
+                  //   },
+                  //   child: const Text("Cap Inner"),
+                  // ),
+                  // LinearProgressIndicator(value: _progress),
+                  // // RawImage(image: _image),
+                  // _currentImage != null ? Image.memory(Uint8List.fromList(img.encodePng(_currentImage!)), fit: BoxFit.contain) : Text('No oc image captured yet.'),
                 ],
               ),
             ),
+      bottomNavigationBar: BottomNavigationBar(
+        selectedItemColor: Colors.blue,
+        unselectedItemColor: Colors.grey[400],
+        backgroundColor: Theme.of(context).primaryColor,
+        currentIndex: tabIndex,
+        onTap: (int index) {
+          setState(() {
+            tabIndex = index;
+          });
+        },
+        items: [
+          BottomNavigationBarItem(icon: Icon(Icons.bluetooth), label: 'Connections'),
+          BottomNavigationBarItem(icon: Icon(Icons.camera), label: 'Cameras'),
+          BottomNavigationBarItem(icon: Icon(Icons.troubleshoot), label: 'Test'),
+          BottomNavigationBarItem(icon: Icon(Icons.terminal), label: 'Logs'),
+        ],
+      ),
     );
   }
 }
