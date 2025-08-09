@@ -38,7 +38,7 @@ class TfliteModel {
     if (interpreter != null) {
       interpreter!.close();
       interpreter = null;
-      debugPrint('Interpreter closed.');
+      debugPrint('Interpreter closed. Model: $_modelPath');
     }
   }
 }
