@@ -30,23 +30,23 @@ class OomiPredictor {
     final playedOrt = OrtValueTensor.createTensorWithDataList(playedData, playedShape);
 
     // Input: valid_actions (shape [1, 32], type boolean)
-    // The package can create a boolean tensor directly from a List<List<bool>>
     final validActionsData = [List.generate(32, (i) => i == 10 || i == 14 || i == 25 || i == 28)];
     final validActionsOrt = OrtValueTensor.createTensorWithDataList(validActionsData, [1, 32]);
 
-    // 2. Create the inputs map. The keys MUST match the model's input names.
+    // Create the inputs map. The keys MUST match the model's input names.
     final inputs = {'trump_suit': trumpSuitOrt, 'hand': handOrt, 'desk': deskOrt, 'played': playedOrt, 'valid_actions': validActionsOrt};
 
-    // 3. Run inference
+    // Run inference
     final outputs = await model.runInference(inputs);
 
+    // Release the input tensors
     trumpSuitOrt.release();
     handOrt.release();
     deskOrt.release();
     playedOrt.release();
     validActionsOrt.release();
 
-    // 4. print the outputs
+    // Print the outputs
     for (var output in outputs) {
       if (output != null) {
         final nestedList = output.value as List<List<double>>;
