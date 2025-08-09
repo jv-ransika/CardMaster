@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:card_master/config.dart';
 import 'package:card_master/handlers/conn_input_handler/handler.dart';
 import 'package:flutter/material.dart';
@@ -19,14 +21,16 @@ class ConnectionsView extends StatefulWidget {
 }
 
 class _ConnectionsViewState extends State<ConnectionsView> {
-  final Map<String, String?> deviceAddresses = {"Bot": null, "Outer Camera": null, "Inner Camera": null};
+  final Map<String, String?> deviceAddresses = {"Bot": null, "Outer Camera": "3C:8A:1F:D4:7C:1E", "Inner Camera": null};
   final Map<String, BluetoothConnection?> deviceConnections = {"Bot": null, "Outer Camera": null, "Inner Camera": null};
 
   bool _isRefreshing = false;
 
-  void _recheckPairedDevices() {
-    setState(() {
-      _isRefreshing = true;
+  Future<void> _recheckPairedDevices() async {
+    Completer<void> completer = Completer<void>();
+
+    FlutterBluetoothSerial.instance.startDiscovery().listen((BluetoothDiscoveryResult result) {
+      print("Discovered device: ${result.device.name} (${result.device.address})");
     });
 
     FlutterBluetoothSerial.instance
@@ -42,18 +46,21 @@ class _ConnectionsViewState extends State<ConnectionsView> {
             }
           }
 
-          setState(() {});
-
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Scan Completed!")));
         })
         .catchError((error) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Scan Failed!")));
         })
         .whenComplete(() {
-          setState(() {
-            _isRefreshing = false;
-          });
+          completer.complete();
         });
+
+    return completer.future;
+  }
+
+  @override
+  void initState() {
+    super.initState();
   }
 
   @override
@@ -63,26 +70,44 @@ class _ConnectionsViewState extends State<ConnectionsView> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.all(8),
-      padding: EdgeInsets.all(8),
-      decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
-      child: Column(
-        children: [
-          _isRefreshing ? LinearProgressIndicator() : ElevatedButton(onPressed: _recheckPairedDevices, child: Text("Refresh")),
-          SizedBox(height: 20),
-          // List items
-          ...deviceAddresses.entries.map(
-            (entry) => DeviceItem(
-              onConnect: (conn) {
-                deviceConnections[entry.key] = conn;
-              },
-              name: entry.key,
-              address: entry.value,
-              inputHandler: widget.deviceInputHandlers[entry.key]!,
-            ),
+    return RefreshIndicator(
+      onRefresh: () async {
+        await _recheckPairedDevices();
+        setState(() {});
+      },
+      child: SingleChildScrollView(
+        physics: AlwaysScrollableScrollPhysics(),
+        child: Container(
+          padding: EdgeInsets.all(8),
+          child: Column(
+            children: [
+              SizedBox(height: 20),
+              // Render items as a grid
+              GridView.builder(
+                shrinkWrap: true,
+                physics: NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2, // Two items per row
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                  childAspectRatio: 0.9, // Adjust as needed for item size
+                ),
+                itemCount: deviceAddresses.length,
+                itemBuilder: (context, index) {
+                  String key = deviceAddresses.keys.elementAt(index);
+                  return DeviceItem(
+                    onConnect: (conn) {
+                      deviceConnections[key] = conn;
+                    },
+                    name: key,
+                    address: deviceAddresses[key],
+                    inputHandler: widget.deviceInputHandlers[key]!,
+                  );
+                },
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -161,16 +186,56 @@ class _DeviceItemState extends State<DeviceItem> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.symmetric(vertical: 4),
-      padding: EdgeInsets.all(12),
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
+        color: Colors.white,
         border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(color: Colors.grey.shade200, blurRadius: 6, offset: const Offset(0, 3))],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Expanded(child: Text(widget.name, style: TextStyle(fontSize: 16))),
-          if (conn != null) Text("Connected", style: TextStyle(color: Colors.green)) else if (widget.address == null) Text("Not Paired", style: TextStyle(color: Colors.red)) else ElevatedButton(onPressed: _isConnecting || conn != null ? null : _handleConnect, child: _isConnecting ? CircularProgressIndicator(strokeWidth: 2) : Text("Connect")),
+          Icon(
+            conn != null
+                ? Icons.bluetooth_connected
+                : widget.address == null
+                ? Icons.bluetooth_disabled
+                : Icons.bluetooth,
+            size: 40,
+            color: conn != null
+                ? Colors.green.shade600
+                : widget.address == null
+                ? Colors.red.shade600
+                : Colors.blue.shade600,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            widget.name,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          if (conn != null)
+            Text(
+              "Connected",
+              style: TextStyle(color: Colors.green.shade600, fontWeight: FontWeight.bold),
+            )
+          else if (widget.address == null)
+            Text(
+              "Not Paired",
+              style: TextStyle(color: Colors.red.shade600, fontWeight: FontWeight.bold),
+            )
+          else
+            ElevatedButton(
+              onPressed: _isConnecting || conn != null ? null : _handleConnect,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: _isConnecting ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Text("Connect"),
+            ),
         ],
       ),
     );
