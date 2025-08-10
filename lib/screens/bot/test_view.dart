@@ -103,6 +103,15 @@ class _TestViewState extends State<TestView> {
   }
 
   @override
+  void initState() {
+    widget.controller.onUpdate = () {
+      setState(() {});
+    };
+
+    super.initState();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(12),

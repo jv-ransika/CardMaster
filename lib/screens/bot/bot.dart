@@ -159,11 +159,12 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
           gameHandler.pushBtnCardBotTurnPressed = true;
           imageInputHandlerOuter.captureImage();
           break;
-        case "test enabled":
+        case "Test mode enabled.":
+          print("fdfdfd");
           testViewController.testModeEnabled = true;
           testViewController.update();
           break;
-        case "test disabled":
+        case "Test mode exit.":
           testViewController.testModeEnabled = false;
           testViewController.update();
           break;
