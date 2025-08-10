@@ -2,23 +2,49 @@ import 'dart:ui';
 import 'package:card_master/tflite/yolo_detector.dart';
 
 class GameHandler {
+  /**
+   * H7, H8, H9, H10, HJ, HQ, HK, HA,
+   * D7, D8, D9, D10, DJ, DQ, DK, DA,
+   * C7, C8, C9, C10, CJ, CQ, CK, CA,
+   * S7, S8, S9, S10, SJ, SQ, SK, SA
+   */
+
   bool isValid = false;
 
-  final Map<String, String?> cards = {"me": null, "infront": null, "left": null, "right": null};
+  final Map<String, String?> cardsOnBoard = {"me": null, "infront": null, "left": null, "right": null};
+  String? currentInputCardSymbol;
+
+  List<String?> currentStack = [null, null, null, null, null, null, null, null];
+  String trumpSuit = "H";
+
+  bool pushBtnCardInPressed = false;
+  bool pushBtnCardBotTurnPressed = false;
 
   GameHandler();
 
   void reset() {
     isValid = false;
-    cards.forEach((key, value) {
-      cards[key] = null;
+    currentInputCardSymbol = null;
+    cardsOnBoard.forEach((key, value) {
+      cardsOnBoard[key] = null;
     });
   }
 
-  void classifyDetections(List<YOLODetection> detections, double imgWidth, double imgHeight) {
-    reset();
+  void analyzeInnerCamDetections(List<YOLODetection> detections) {
+    if (detections.isNotEmpty) {
+      currentInputCardSymbol = detections.first.className;
+      sendResponseForPushButtonCardIn();
+    } else {
+      currentInputCardSymbol = null;
+    }
+  }
 
-    final centers = calcDistinctClassCenters(detections);
+  void analyzeOuterCamDetections(List<YOLODetection> detections, double imgWidth, double imgHeight) {
+    cardsOnBoard.forEach((key, value) {
+      cardsOnBoard[key] = null;
+    });
+
+    final centers = _calcDistinctClassCenters(detections);
 
     if (centers.length > 4) return;
     isValid = true;
@@ -36,18 +62,32 @@ class GameHandler {
       double dy = center.dy - boardCenterY;
 
       if (dy > 0 && dy.abs() > dx.abs()) {
-        cards["me"] = className; // My card
+        cardsOnBoard["me"] = className; // My card
       } else if (dy < 0 && dy.abs() > dx.abs()) {
-        cards["infront"] = className; // Partner's card
+        cardsOnBoard["infront"] = className; // Partner's card
       } else if (dx < 0) {
-        cards["left"] = className; // Opponent 1's card
+        cardsOnBoard["left"] = className; // Opponent 1's card
       } else {
-        cards["right"] = className; // Opponent 2's card
+        cardsOnBoard["right"] = className; // Opponent 2's card
       }
     }
+
+    sendResponseForPushButtonCardBotTurn();
   }
 
-  Map<String, Offset> calcDistinctClassCenters(List<YOLODetection> detections) {
+  void sendResponseForPushButtonCardIn() {
+    if (!pushBtnCardInPressed) return;
+
+    // Send response for "in" button press
+  }
+
+  void sendResponseForPushButtonCardBotTurn() {
+    if (!pushBtnCardBotTurnPressed) return;
+
+    // Send response for "predict" button press
+  }
+
+  Map<String, Offset> _calcDistinctClassCenters(List<YOLODetection> detections) {
     final Map<String, List<Offset>> classToCenters = {};
 
     // Group centers by class

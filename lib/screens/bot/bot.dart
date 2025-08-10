@@ -3,11 +3,14 @@ import 'dart:typed_data';
 import 'package:card_master/config.dart';
 import 'package:card_master/handlers/conn_input_handler/bot_handler.dart';
 import 'package:card_master/handlers/conn_input_handler/image_handler.dart';
+import 'package:card_master/handlers/game_handler/game_handler.dart';
 import 'package:card_master/onnx/onnx_model.dart';
 import 'package:card_master/onnx/oomi_predictor.dart';
 import 'package:card_master/screens/bot/cameras_view.dart';
 import 'package:card_master/screens/bot/connections_view.dart';
+import 'package:card_master/screens/bot/game_view.dart';
 import 'package:card_master/screens/bot/omi_board.dart';
+import 'package:card_master/screens/bot/test_view.dart';
 import 'package:card_master/tflite/tflite_model_isolate.dart';
 import 'package:card_master/tflite/tflite_model.dart';
 import 'package:card_master/tflite/yolo_detector.dart';
@@ -52,9 +55,11 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
 
   img.Image? _currentImage;
 
-  OmiBoard omiBoard = OmiBoard();
+  GameHandler gameHandler = GameHandler();
 
   late CamerasViewController camerasViewController;
+  late GameViewController gameViewController;
+  late TestViewController testViewController;
 
   void _initializeTabs() {
     camerasViewController = CamerasViewController(
@@ -67,10 +72,23 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
       },
     );
 
+    gameViewController = GameViewController(
+      onUpdateTrumpSuit: (String suit) {
+        gameHandler.trumpSuit = suit;
+      },
+    );
+
+    testViewController = TestViewController(
+      onTestCommand: (String command) {
+        botInputHandler.sendString(command);
+      },
+    );
+
     tabs = [
       ConnectionsView(inputHandlers: {"Outer Camera": imageInputHandlerOuter, "Inner Camera": imageInputHandlerInner, "Bot": botInputHandler}),
+      GameView(controller: gameViewController),
       CamerasView(controller: camerasViewController),
-      Text("Test View"), // Placeholder for test view
+      TestView(controller: testViewController),
       Text("Logs View"), // Placeholder for logs view
     ];
   }
@@ -91,11 +109,13 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
       print("Outer Image Captured: Width: $width, Height: $height");
       _currentImage = imageInputHandlerOuter.image!;
       List<YOLODetection> detections = await detectCurrentImage();
+      //...
       drawBoundaryBoxes(detections, _currentImage!);
       camerasViewController.outerImage = _currentImage;
       camerasViewController.progressOuterImage = 0.0;
       camerasViewController.update();
-      // omiBoard.classifyDetections(detections, _currentImage!.width.toDouble(), _currentImage!.height.toDouble());
+      //...
+      gameHandler.analyzeOuterCamDetections(detections, _currentImage!.width.toDouble(), _currentImage!.height.toDouble());
     });
 
     imageInputHandlerInner.listenToOnImageCaptured((int width, int height) async {
@@ -103,18 +123,23 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
       final originalImage = imageInputHandlerInner.image!;
       _currentImage = img.copyExpandCanvas(originalImage, newWidth: 800, newHeight: 800, backgroundColor: img.ColorRgb8(255, 255, 255));
       List<YOLODetection> detections = await detectCurrentImage();
+      //...
       drawBoundaryBoxes(detections, _currentImage!);
       camerasViewController.innerImage = _currentImage;
       camerasViewController.progressInnerImage = 0.0;
       camerasViewController.update();
-      // Do something...
+      //...
+      gameHandler.analyzeInnerCamDetections(detections);
+      //...
+      gameViewController.currentStack = gameHandler.currentStack;
+      gameViewController.update();
     });
 
     // Image download progress update listeners
 
     imageInputHandlerOuter.listenToOnProgressUpdate((double progress) {
-      // camerasViewController.progressOuterImage = progress;
-      // camerasViewController.update();
+      camerasViewController.progressOuterImage = progress;
+      camerasViewController.update();
     });
 
     imageInputHandlerInner.listenToOnProgressUpdate((double progress) {
@@ -125,6 +150,27 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
     // Bot command listener
 
     botInputHandler.listenToOnLineReceived((String line) {
+      switch (line) {
+        case "in":
+          gameHandler.pushBtnCardInPressed = true;
+          imageInputHandlerInner.captureImage();
+          break;
+        case "predict":
+          gameHandler.pushBtnCardBotTurnPressed = true;
+          imageInputHandlerOuter.captureImage();
+          break;
+        case "test enabled":
+          testViewController.testModeEnabled = true;
+          testViewController.update();
+          break;
+        case "test disabled":
+          testViewController.testModeEnabled = false;
+          testViewController.update();
+          break;
+        default:
+          print("Unknown input received: $line");
+      }
+
       print('Received: $line, ${line.length}');
       return null;
     });
@@ -244,6 +290,7 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
         },
         items: [
           BottomNavigationBarItem(icon: Icon(Icons.bluetooth), label: 'Connections'),
+          BottomNavigationBarItem(icon: Icon(Icons.gamepad), label: 'Game'),
           BottomNavigationBarItem(icon: Icon(Icons.camera), label: 'Cameras'),
           BottomNavigationBarItem(icon: Icon(Icons.troubleshoot), label: 'Test'),
           BottomNavigationBarItem(icon: Icon(Icons.terminal), label: 'Logs'),
