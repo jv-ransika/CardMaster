@@ -6,12 +6,12 @@ class OomiPredictor {
   OomiPredictor();
 
   Future<void> predict(OnnxModel model) async {
-    // Input: trump_suit (shape [1], type int64)
+    // Input: trump_suit (shape [1], type int64) -> H, D, C, S
     final trumpSuitData = Int64List.fromList([3]); // Example: Suit '3' is trump
     final trumpSuitShape = [1];
     final trumpSuitOrt = OrtValueTensor.createTensorWithDataList(trumpSuitData, trumpSuitShape);
 
-    // Input: hand (shape [1, 8], type int64)
+    // Input: hand (shape [1, 8], type int64) -> index of symbol
     final handData = Int64List.fromList([10, 14, 25, 28, 0, 0, 0, 0]); // Padded with 0
     final handShape = [1, 8];
     final handOrt = OrtValueTensor.createTensorWithDataList(handData, handShape);
