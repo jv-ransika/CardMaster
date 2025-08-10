@@ -100,7 +100,7 @@ class _CamerasViewState extends State<CamerasView> {
           ),
         ),
 
-        CardInputSymbolWindow(symbol: "2D", capturedImage: widget.controller.outerImage, progress: widget.controller.progressOuterImage),
+        CardInputSymbolWindow(symbol: "2D", capturedImage: widget.controller.innerImage, progress: widget.controller.progressInnerImage),
 
         const SizedBox(height: 16),
       ],

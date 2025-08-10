@@ -74,16 +74,16 @@ class _OmiBoardState extends State<OmiBoard> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text('Show Board'),
+              const Text('Show Image'),
+              const SizedBox(width: 8),
               Switch(
-                value: showBoard,
+                value: !showBoard,
                 onChanged: (val) {
                   setState(() {
-                    showBoard = val;
+                    showBoard = !val;
                   });
                 },
               ),
-              const Text('Show Image'),
             ],
           ),
         ),

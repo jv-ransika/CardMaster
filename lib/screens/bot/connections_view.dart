@@ -65,6 +65,9 @@ class _ConnectionsViewState extends State<ConnectionsView> {
 
   @override
   void dispose() {
+    for (var conn in deviceConnections.values) {
+      conn?.dispose();
+    }
     super.dispose();
   }
 

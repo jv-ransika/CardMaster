@@ -1,5 +1,6 @@
 // isolate_manager.dart
 import 'dart:async';
+import 'dart:io';
 import 'dart:isolate';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -57,6 +58,47 @@ class TfliteModelIsolate {
       replyTo.send(output);
     }
   }
+
+  // static void _entryPoint(List<dynamic> args) async {
+  //   final modelBytes = args[0] as Uint8List;
+  //   SendPort readyPort = args[1];
+
+  //   late Interpreter interpreter;
+  //   late Delegate delegate;
+
+  //   try {
+  //     if (Platform.isAndroid) {
+  //       delegate = GpuDelegateV2(options: GpuDelegateOptionsV2(isPrecisionLossAllowed: false));
+  //     } else if (Platform.isIOS) {
+  //       delegate = GpuDelegate(options: GpuDelegateOptions(allowPrecisionLoss: true));
+  //     }
+  //     var interpreterOptions = InterpreterOptions()..addDelegate(delegate);
+  //     interpreter = Interpreter.fromBuffer(modelBytes, options: interpreterOptions);
+  //   } catch (e) {
+  //     debugPrint("Error initializing interpreter: $e");
+  //     return;
+  //   }
+
+  //   final port = ReceivePort();
+
+  //   List readyData = [];
+  //   readyData.add(interpreter.getInputTensor(0).shape);
+  //   readyData.add(interpreter.getOutputTensor(0).shape);
+  //   readyData.add(port.sendPort);
+
+  //   readyPort.send(readyData);
+
+  //   await for (var message in port) {
+  //     final input = message[0];
+  //     var output = generateOutputBuffer(interpreter.getOutputTensor(0).shape);
+
+  //     final replyTo = message[1] as SendPort;
+
+  //     interpreter.run(input, output);
+
+  //     replyTo.send(output);
+  //   }
+  // }
 
   Future<dynamic> runInference(dynamic input) async {
     final completer = Completer<dynamic>();

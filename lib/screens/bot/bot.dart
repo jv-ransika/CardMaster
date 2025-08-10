@@ -62,8 +62,8 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
         imageInputHandlerOuter.captureImage();
       },
       onNeedUpdateInnerImage: () async {
-        // imageInputHandlerInner.captureImage();
-        await oomiPredictor.predict(oomiModel);
+        imageInputHandlerInner.captureImage();
+        // await oomiPredictor.predict(oomiModel);
       },
     );
 
@@ -91,6 +91,7 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
       print("Outer Image Captured: Width: $width, Height: $height");
       _currentImage = imageInputHandlerOuter.image!;
       List<YOLODetection> detections = await detectCurrentImage();
+      drawBoundaryBoxes(detections, _currentImage!);
       camerasViewController.outerImage = _currentImage;
       camerasViewController.progressOuterImage = 0.0;
       camerasViewController.update();
@@ -99,9 +100,10 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
 
     imageInputHandlerInner.listenToOnImageCaptured((int width, int height) async {
       print("Inner Image Captured: Width: $width, Height: $height");
-      _currentImage = imageInputHandlerInner.image!;
-      _currentImage = img.copyExpandCanvas(_currentImage!, newWidth: 800, newHeight: 800, backgroundColor: img.ColorRgb8(255, 255, 255));
+      final originalImage = imageInputHandlerInner.image!;
+      _currentImage = img.copyExpandCanvas(originalImage, newWidth: 800, newHeight: 800, backgroundColor: img.ColorRgb8(255, 255, 255));
       List<YOLODetection> detections = await detectCurrentImage();
+      drawBoundaryBoxes(detections, _currentImage!);
       camerasViewController.innerImage = _currentImage;
       camerasViewController.progressInnerImage = 0.0;
       camerasViewController.update();
@@ -111,8 +113,8 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
     // Image download progress update listeners
 
     imageInputHandlerOuter.listenToOnProgressUpdate((double progress) {
-      camerasViewController.progressOuterImage = progress;
-      camerasViewController.update();
+      // camerasViewController.progressOuterImage = progress;
+      // camerasViewController.update();
     });
 
     imageInputHandlerInner.listenToOnProgressUpdate((double progress) {
@@ -178,8 +180,6 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
   Future<List<YOLODetection>> detectCurrentImage() async {
     try {
       List<YOLODetection> detections = await yoloDetector.detectObjects(_currentImage!, yoloModel);
-
-      drawBoundaryBoxes(detections, _currentImage!);
 
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("YOLO detection completed.")));
 
