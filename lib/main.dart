@@ -4,5 +4,10 @@ import 'package:flutter/services.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MaterialApp(home: HomeScreen()));
+  runApp(
+    MaterialApp(
+      home: HomeScreen(),
+      theme: ThemeData.from(colorScheme: ColorScheme.fromSeed(seedColor: Colors.green[700]!)),
+    ),
+  );
 }
