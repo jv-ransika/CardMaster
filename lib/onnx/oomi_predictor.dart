@@ -1,5 +1,4 @@
 import 'dart:typed_data';
-
 import 'package:card_master/onnx/onnx_model.dart';
 import 'package:onnxruntime/onnxruntime.dart';
 
