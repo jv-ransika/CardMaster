@@ -26,28 +26,30 @@ class _CamerasViewState extends State<CamerasView> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        const SizedBox(height: 8),
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          const SizedBox(height: 8),
 
-        buildCameraSection(
-          title: "Outer Camera",
-          onUpdatePressed: widget.controller.callNeedUpdateOuterImage,
-          isUpdating: widget.controller.progressOuterImage > 0,
-          content: OmiBoard(me: "2D", infront: "3C", left: "AH", right: "6S", capturedImage: widget.controller.outerImage, progress: widget.controller.progressOuterImage),
-        ),
+          buildCameraSection(
+            title: "Outer Camera",
+            onUpdatePressed: widget.controller.callNeedUpdateOuterImage,
+            isUpdating: widget.controller.progressOuterImage > 0,
+            content: OmiBoard(me: "2D", infront: "3C", left: "AH", right: "6S", capturedImage: widget.controller.outerImage, progress: widget.controller.progressOuterImage),
+          ),
 
-        const SizedBox(height: 16),
+          const SizedBox(height: 16),
 
-        buildCameraSection(
-          title: "Inner Camera",
-          onUpdatePressed: widget.controller.callNeedUpdateInnerImage,
-          isUpdating: widget.controller.progressInnerImage > 0,
-          content: CardInputSymbolWindow(symbol: "2D", capturedImage: widget.controller.innerImage, progress: widget.controller.progressInnerImage),
-        ),
+          buildCameraSection(
+            title: "Inner Camera",
+            onUpdatePressed: widget.controller.callNeedUpdateInnerImage,
+            isUpdating: widget.controller.progressInnerImage > 0,
+            content: CardInputSymbolWindow(symbol: "2D", capturedImage: widget.controller.innerImage, progress: widget.controller.progressInnerImage),
+          ),
 
-        const SizedBox(height: 16),
-      ],
+          const SizedBox(height: 16),
+        ],
+      ),
     );
   }
 
