@@ -9,6 +9,7 @@ import 'package:card_master/onnx/oomi_predictor.dart';
 import 'package:card_master/screens/bot/cameras_view.dart';
 import 'package:card_master/screens/bot/connections_view.dart';
 import 'package:card_master/screens/bot/game_view.dart';
+import 'package:card_master/screens/bot/logs_view.dart';
 import 'package:card_master/screens/bot/omi_board.dart';
 import 'package:card_master/screens/bot/test_view.dart';
 import 'package:card_master/tflite/tflite_model_isolate.dart';
@@ -60,6 +61,7 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
   late CamerasViewController camerasViewController;
   late GameViewController gameViewController;
   late TestViewController testViewController;
+  late LogsViewController logsViewController;
 
   void _initializeTabs() {
     camerasViewController = CamerasViewController(
@@ -84,12 +86,16 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
       },
     );
 
+    logsViewController = LogsViewController();
+
     tabs = [
       ConnectionsView(inputHandlers: {"Outer Camera": imageInputHandlerOuter, "Inner Camera": imageInputHandlerInner, "Bot": botInputHandler}),
       GameView(controller: gameViewController),
       CamerasView(controller: camerasViewController),
       TestView(controller: testViewController),
-      Text("Logs View"), // Placeholder for logs view
+      Column(
+        children: [Expanded(child: LogsView(controller: logsViewController))],
+      ),
     ];
   }
 
@@ -150,6 +156,14 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
     // Bot command listener
 
     botInputHandler.listenToOnLineReceived((String line) {
+      debugPrint('Received: $line, ${line.length}');
+
+      // Detect logs (starts with "log -")
+      if (line.startsWith("log -")) {
+        logsViewController.addLog(line);
+        return null;
+      }
+
       switch (line) {
         case "in":
           gameHandler.pushBtnCardInPressed = true;
@@ -160,7 +174,6 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
           imageInputHandlerOuter.captureImage();
           break;
         case "Test mode enabled.":
-          print("fdfdfd");
           testViewController.testModeEnabled = true;
           testViewController.update();
           break;
@@ -169,10 +182,9 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
           testViewController.update();
           break;
         default:
-          print("Unknown input received: $line");
+          debugPrint("Unknown input received: $line");
       }
 
-      print('Received: $line, ${line.length}');
       return null;
     });
 
@@ -249,36 +261,7 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
                 child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [CircularProgressIndicator(), SizedBox(width: 20), Text("Loading Models...")]),
               ),
             )
-          : SingleChildScrollView(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  IndexedStack(index: tabIndex, children: tabs),
-                  // ExpansionTile(
-                  //   title: Text('Connections'),
-                  //   children: <Widget>[
-                  //     ConnectionsView(inputHandlers: {"Outer Camera": imageInputHandlerOuter, "Inner Camera": imageInputHandlerInner, "Bot": botInputHandler}),
-                  //   ],
-                  // ),
-                  // if (_isDetecting) LinearProgressIndicator(),
-                  // ElevatedButton(
-                  //   onPressed: () async {
-                  //     imageInputHandlerOuter.captureImage();
-                  //   },
-                  //   child: const Text("Cap Outer"),
-                  // ),
-                  // ElevatedButton(
-                  //   onPressed: () async {
-                  //     imageInputHandlerInner.captureImage();
-                  //   },
-                  //   child: const Text("Cap Inner"),
-                  // ),
-                  // LinearProgressIndicator(value: _progress),
-                  // // RawImage(image: _image),
-                  // _currentImage != null ? Image.memory(Uint8List.fromList(img.encodePng(_currentImage!)), fit: BoxFit.contain) : Text('No oc image captured yet.'),
-                ],
-              ),
-            ),
+          : IndexedStack(index: tabIndex, children: tabs),
       bottomNavigationBar: BottomNavigationBar(
         selectedItemColor: Colors.blue,
         unselectedItemColor: Colors.grey[400],
