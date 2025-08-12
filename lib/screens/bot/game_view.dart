@@ -1,5 +1,5 @@
 import 'package:card_master/components/card_stack.dart';
-import 'package:card_master/components/trump_selector.dart';
+import 'package:card_master/components/current_trump.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 
@@ -40,11 +40,7 @@ class _GameViewState extends State<GameView> {
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.grey.shade300),
               ),
-              child: TrumpSelector(
-                onSuitSelected: (suit) {
-                  // TODO: Handle suit selection
-                },
-              ),
+              child: CurrentTrump(trumpSuit: widget.controller.trumpSuit),
             ),
 
             const SizedBox(height: 24),
@@ -59,7 +55,7 @@ class _GameViewState extends State<GameView> {
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.grey.shade300),
               ),
-              child: CardStack(stacks: widget.controller.currentStack),
+              child: CardStack(stacks: widget.controller.stack),
             ),
           ],
         ),
@@ -71,7 +67,8 @@ class _GameViewState extends State<GameView> {
 class GameViewController {
   final Function(String) onUpdateTrumpSuit;
 
-  List<String?> currentStack = [null, null, null, null, null, null, null, null];
+  List<String?> stack = [null, null, null, null, null, null, null, null];
+  String? trumpSuit;
 
   Function? onUpdate;
 

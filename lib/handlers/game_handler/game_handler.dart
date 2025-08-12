@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:card_master/tflite/yolo_detector.dart';
+import 'package:flutter/material.dart';
 
 class GameHandler {
   /**
@@ -9,16 +10,21 @@ class GameHandler {
    * S7, S8, S9, S10, SJ, SQ, SK, SA
    */
 
+  final List<String> labelOrder = ["H7", "H8", "H9", "H10", "HJ", "HQ", "HK", "HA", "D7", "D8", "D9", "D10", "DJ", "DQ", "DK", "DA", "C7", "C8", "C9", "C10", "CJ", "CQ", "CK", "CA", "S7", "S8", "S9", "S10", "SJ", "SQ", "SK", "SA"];
+
   bool isValid = false;
 
   final Map<String, String?> cardsOnBoard = {"me": null, "infront": null, "left": null, "right": null};
   String? currentInputCardSymbol;
 
-  List<String?> currentStack = [null, null, null, null, null, null, null, null];
-  String trumpSuit = "H";
+  List<String?> stack = [null, null, null, null, null, null, null, null]; // Current stack
+  String? trumpSuit; // Current trump suit
+  List<String> cardUsedSoFar = [];
 
-  bool pushBtnCardInPressed = false;
-  bool pushBtnCardBotTurnPressed = false;
+  String? beginSuitOfCurrentRound;
+
+  bool btnCardInPressed = false;
+  bool btnCardOutPressed = false;
 
   GameHandler();
 
@@ -28,6 +34,9 @@ class GameHandler {
     cardsOnBoard.forEach((key, value) {
       cardsOnBoard[key] = null;
     });
+
+    stack = [null, null, null, null, null, null, null, null];
+    cardUsedSoFar.clear();
   }
 
   void analyzeInnerCamDetections(List<YOLODetection> detections) {
@@ -76,15 +85,28 @@ class GameHandler {
   }
 
   void sendResponseForPushButtonCardIn() {
-    if (!pushBtnCardInPressed) return;
+    if (!btnCardInPressed) return;
 
-    // Send response for "in" button press
+    for (int i = 0; i < stack.length; i++) {
+      if (stack[i] == null) {
+        stack[i] = currentInputCardSymbol;
+        break;
+      }
+    }
+
+    //...
   }
 
   void sendResponseForPushButtonCardBotTurn() {
-    if (!pushBtnCardBotTurnPressed) return;
+    if (!btnCardOutPressed) return;
 
-    // Send response for "predict" button press
+    for (var card in cardsOnBoard.values) {
+      if (card != null && !cardUsedSoFar.contains(card)) {
+        cardUsedSoFar.add(card);
+      }
+    }
+
+    //...
   }
 
   Map<String, Offset> _calcDistinctClassCenters(List<YOLODetection> detections) {

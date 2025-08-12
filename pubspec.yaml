@@ -38,6 +38,7 @@ dependencies:
   tflite_flutter: ^0.11.0
   onnxruntime: ^1.4.1
   image: ^4.5.4
+  mobile_scanner: ^7.0.1
   flutter_bluetooth_serial:
     path: ./packages/flutter_bluetooth_serial-0.4.0
 
@@ -67,6 +68,7 @@ flutter:
   assets:
     - assets/yolo11s_f32.tflite
     - assets/yolov5nu_f16.tflite
+    - assets/yolov8n_f32.tflite
     - assets/oomi_agent.onnx
     - assets/images/cards/
 

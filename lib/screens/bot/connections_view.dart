@@ -244,3 +244,148 @@ class _DeviceItemState extends State<DeviceItem> {
     );
   }
 }
+
+// import 'dart:async';
+// import 'package:card_master/config.dart';
+// import 'package:card_master/handlers/conn_input_handler/handler.dart';
+// import 'package:flutter/material.dart';
+// import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
+
+// class ConnectionsView extends StatefulWidget {
+//   final Map<String, ConnectionInputHandler> inputHandlers;
+
+//   ConnectionsView({super.key, required this.inputHandlers});
+
+//   @override
+//   _ConnectionsViewState createState() => _ConnectionsViewState();
+// }
+
+// class _ConnectionsViewState extends State<ConnectionsView> {
+//   final Map<String, String?> deviceAddresses = {"Bot": null, "Outer Camera": "3C:8A:1F:D4:7C:1E", "Inner Camera": null};
+//   final Map<String, BluetoothConnection?> deviceConnections = {"Bot": null, "Outer Camera": null, "Inner Camera": null};
+
+//   bool _isConnectingAll = false;
+
+//   Future<void> _recheckPairedDevices() async {
+//     List<BluetoothDevice> devices = await FlutterBluetoothSerial.instance.getBondedDevices();
+//     for (BluetoothDevice device in devices) {
+//       if (device.name == Config.bleDeviceNameBot) {
+//         deviceAddresses["Bot"] = device.address;
+//       } else if (device.name == Config.bleDeviceNameOuterCamera) {
+//         deviceAddresses["Outer Camera"] = device.address;
+//       } else if (device.name == Config.bleDeviceNameInnerCamera) {
+//         deviceAddresses["Inner Camera"] = device.address;
+//       }
+//     }
+//     setState(() {});
+//     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Scan Completed!")));
+//   }
+
+//   Future<void> _connectAllDevices() async {
+//     setState(() {
+//       _isConnectingAll = true;
+//     });
+
+//     for (var key in deviceAddresses.keys) {
+//       String? address = deviceAddresses[key];
+//       if (address != null && deviceConnections[key] == null) {
+//         try {
+//           var conn = await BluetoothConnection.toAddress(address);
+
+//           conn.input
+//               ?.listen((data) {
+//                 widget.inputHandlers[key]?.pushBytes(data);
+//               })
+//               .onDone(() {
+//                 widget.inputHandlers[key]?.notifyDisconnected();
+//                 deviceConnections[key] = null;
+//                 if (mounted) setState(() {});
+//               });
+
+//           widget.inputHandlers[key]?.listenToOnSendCommand((command) {
+//             if (conn.isConnected) {
+//               conn.output.add(command);
+//             }
+//           });
+
+//           widget.inputHandlers[key]?.notifyConnected();
+//           deviceConnections[key] = conn;
+
+//           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Connected to $key")));
+//         } catch (e) {
+//           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to connect $key")));
+//         }
+//       }
+//     }
+
+//     setState(() {
+//       _isConnectingAll = false;
+//     });
+//   }
+
+//   Color _getStatusColor(String? address, BluetoothConnection? conn) {
+//     if (address == null) return Colors.grey; // Not bonded
+//     if (conn != null && conn.isConnected) return Colors.green; // Connected
+//     return Colors.red; // Bonded but disconnected
+//   }
+
+//   @override
+//   void dispose() {
+//     for (var conn in deviceConnections.values) {
+//       conn?.close();
+//     }
+//     super.dispose();
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return RefreshIndicator(
+//       onRefresh: _recheckPairedDevices,
+//       child: ListView(
+//         padding: EdgeInsets.all(12),
+//         children: [
+//           ElevatedButton.icon(
+//             onPressed: _isConnectingAll ? null : _connectAllDevices,
+//             icon: _isConnectingAll ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(Icons.bluetooth_connected),
+//             label: Text("Connect All Devices"),
+//             style: ElevatedButton.styleFrom(
+//               padding: EdgeInsets.symmetric(vertical: 12),
+//               textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+//             ),
+//           ),
+//           SizedBox(height: 16),
+//           ...deviceAddresses.keys.map((key) {
+//             return Container(
+//               margin: EdgeInsets.symmetric(vertical: 6),
+//               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+//               decoration: BoxDecoration(
+//                 color: Colors.white,
+//                 borderRadius: BorderRadius.circular(8),
+//                 boxShadow: [BoxShadow(color: Colors.grey.shade300, blurRadius: 4, offset: Offset(0, 2))],
+//               ),
+//               child: Row(
+//                 children: [
+//                   Container(
+//                     width: 16,
+//                     height: 16,
+//                     decoration: BoxDecoration(color: _getStatusColor(deviceAddresses[key], deviceConnections[key]), shape: BoxShape.circle),
+//                   ),
+//                   SizedBox(width: 12),
+//                   Expanded(
+//                     child: Column(
+//                       crossAxisAlignment: CrossAxisAlignment.start,
+//                       children: [
+//                         Text(key, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+//                         Text(deviceAddresses[key] ?? "Not Paired", style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+//                       ],
+//                     ),
+//                   ),
+//                 ],
+//               ),
+//             );
+//           }).toList(),
+//         ],
+//       ),
+//     );
+//   }
+// }

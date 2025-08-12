@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
-import 'package:card_master/config.dart';
 import 'package:card_master/handlers/conn_input_handler/bot_handler.dart';
 import 'package:card_master/handlers/conn_input_handler/image_handler.dart';
 import 'package:card_master/handlers/game_handler/game_handler.dart';
@@ -10,10 +8,8 @@ import 'package:card_master/screens/bot/cameras_view.dart';
 import 'package:card_master/screens/bot/connections_view.dart';
 import 'package:card_master/screens/bot/game_view.dart';
 import 'package:card_master/screens/bot/logs_view.dart';
-import 'package:card_master/screens/bot/omi_board.dart';
 import 'package:card_master/screens/bot/test_view.dart';
 import 'package:card_master/tflite/tflite_model_isolate.dart';
-import 'package:card_master/tflite/tflite_model.dart';
 import 'package:card_master/tflite/yolo_detector.dart';
 import 'package:image/image.dart' as img;
 import 'package:flutter/foundation.dart';
@@ -99,10 +95,58 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
     ];
   }
 
+  Future<void> _loadModels() async {
+    try {
+      await yoloModel.start();
+      await oomiModel.loadModel();
+      oomiModel.inspectModel();
+      isLoadingModels = false;
+      setState(() {});
+    } catch (e) {
+      debugPrint('Error loading models: $e');
+    }
+  }
+
+  void drawBoundaryBoxes(List<YOLODetection> detections, img.Image image) {
+    for (var detection in detections) {
+      print("${detection.className} - ${detection.confidence} - ${detection.boxX}, ${detection.boxY}, ${detection.boxWidth}, ${detection.boxHeight}");
+      // Convert center-based coords to corner-based
+      final x1 = (detection.boxX - detection.boxWidth / 2).toInt();
+      final y1 = (detection.boxY - detection.boxHeight / 2).toInt();
+      final x2 = (detection.boxX + detection.boxWidth / 2).toInt();
+      final y2 = (detection.boxY + detection.boxHeight / 2).toInt();
+
+      img.drawRect(image, x1: x1, y1: y1, x2: x2, y2: y2, color: img.ColorRgb8(0, 255, 0), thickness: 2);
+    }
+  }
+
+  Future<void> detectCurrentImage() async {
+    try {
+      await yoloDetector.detectObjects(_currentImage!, yoloModel);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("YOLO detection completed.")));
+    } catch (e) {
+      print('Error during YOLO detection: $e');
+    }
+  }
+
+  //=================
+
+  void setCurrentTrump(String suit) {
+    gameHandler.trumpSuit = suit;
+    updateGameView();
+  }
+
+  void updateGameView() {
+    gameViewController.stack = gameHandler.stack;
+    gameViewController.trumpSuit = gameHandler.trumpSuit;
+    gameViewController.update();
+  }
+
+  //=================
+
   @override
   void initState() {
     super.initState();
-    _getPermissions();
     _initializeTabs();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -112,33 +156,34 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
     // Image capture listeners
 
     imageInputHandlerOuter.listenToOnImageCaptured((int width, int height) async {
-      print("Outer Image Captured: Width: $width, Height: $height");
+      debugPrint("Outer Image Captured: Width: $width, Height: $height");
       _currentImage = imageInputHandlerOuter.image!;
-      List<YOLODetection> detections = await detectCurrentImage();
+      await detectCurrentImage();
+      gameHandler.analyzeOuterCamDetections(yoloDetector.detections!, yoloDetector.processedImage!.width.toDouble(), yoloDetector.processedImage!.height.toDouble());
       //...
-      drawBoundaryBoxes(detections, _currentImage!);
-      camerasViewController.outerImage = _currentImage;
+      camerasViewController.outerImage = yoloDetector.processedImage;
       camerasViewController.progressOuterImage = 0.0;
+      camerasViewController.cardsOnBoard = gameHandler.cardsOnBoard;
       camerasViewController.update();
       //...
-      gameHandler.analyzeOuterCamDetections(detections, _currentImage!.width.toDouble(), _currentImage!.height.toDouble());
+      updateGameView();
     });
 
     imageInputHandlerInner.listenToOnImageCaptured((int width, int height) async {
-      print("Inner Image Captured: Width: $width, Height: $height");
+      debugPrint("Inner Image Captured: Width: $width, Height: $height");
+      //==== pad image to 800x800 (240x240 is received, to more accuracy we do this)
       final originalImage = imageInputHandlerInner.image!;
       _currentImage = img.copyExpandCanvas(originalImage, newWidth: 800, newHeight: 800, backgroundColor: img.ColorRgb8(255, 255, 255));
-      List<YOLODetection> detections = await detectCurrentImage();
+      //============================================================================
+      await detectCurrentImage();
+      gameHandler.analyzeInnerCamDetections(yoloDetector.detections!);
       //...
-      drawBoundaryBoxes(detections, _currentImage!);
-      camerasViewController.innerImage = _currentImage;
+      camerasViewController.innerImage = yoloDetector.processedImage;
       camerasViewController.progressInnerImage = 0.0;
+      camerasViewController.currentInputCardSymbol = gameHandler.currentInputCardSymbol;
       camerasViewController.update();
       //...
-      gameHandler.analyzeInnerCamDetections(detections);
-      //...
-      gameViewController.currentStack = gameHandler.currentStack;
-      gameViewController.update();
+      updateGameView();
     });
 
     // Image download progress update listeners
@@ -165,14 +210,29 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
       }
 
       switch (line) {
-        case "in":
-          gameHandler.pushBtnCardInPressed = true;
+        //======================================
+        case "card-in":
+          gameHandler.btnCardInPressed = true;
           imageInputHandlerInner.captureImage();
           break;
-        case "predict":
-          gameHandler.pushBtnCardBotTurnPressed = true;
+        case "card-out":
+          gameHandler.btnCardOutPressed = true;
           imageInputHandlerOuter.captureImage();
           break;
+        //======================================
+        case "set-trump-h":
+          setCurrentTrump("H");
+          break;
+        case "set-trump-d":
+          setCurrentTrump("D");
+          break;
+        case "set-trump-c":
+          setCurrentTrump("C");
+          break;
+        case "set-trump-s":
+          setCurrentTrump("S");
+          break;
+        //======================================
         case "Test mode enabled.":
           testViewController.testModeEnabled = true;
           testViewController.update();
@@ -181,6 +241,7 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
           testViewController.testModeEnabled = false;
           testViewController.update();
           break;
+        //======================================
         default:
           debugPrint("Unknown input received: $line");
       }
@@ -205,49 +266,6 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
     yoloModel.stop();
     oomiModel.close();
     super.dispose();
-  }
-
-  Future<void> _getPermissions() async {
-    await [Permission.bluetoothScan, Permission.bluetoothConnect, Permission.locationWhenInUse].request();
-  }
-
-  Future<void> _loadModels() async {
-    try {
-      await yoloModel.start();
-      await oomiModel.loadModel();
-      oomiModel.inspectModel();
-      isLoadingModels = false;
-      setState(() {});
-    } catch (e) {
-      debugPrint('Error loading models: $e');
-    }
-  }
-
-  void drawBoundaryBoxes(List<YOLODetection> detections, img.Image image) {
-    for (var detection in detections) {
-      print("${detection.className} - ${detection.confidence} - ${detection.boxX}, ${detection.boxY}, ${detection.boxWidth}, ${detection.boxHeight}");
-      // Convert center-based coords to corner-based
-      final x1 = (detection.boxX - detection.boxWidth / 2).toInt();
-      final y1 = (detection.boxY - detection.boxHeight / 2).toInt();
-      final x2 = (detection.boxX + detection.boxWidth / 2).toInt();
-      final y2 = (detection.boxY + detection.boxHeight / 2).toInt();
-
-      img.drawRect(image, x1: x1, y1: y1, x2: x2, y2: y2, color: img.ColorRgb8(0, 255, 0), thickness: 2);
-    }
-  }
-
-  Future<List<YOLODetection>> detectCurrentImage() async {
-    try {
-      List<YOLODetection> detections = await yoloDetector.detectObjects(_currentImage!, yoloModel);
-
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("YOLO detection completed.")));
-
-      return detections;
-    } catch (e) {
-      print('Error during YOLO detection: $e');
-    }
-
-    return [];
   }
 
   @override

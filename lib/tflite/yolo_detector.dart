@@ -1,6 +1,7 @@
 import 'package:card_master/tflite/tflite_model.dart';
 import 'package:card_master/tflite/tflite_model_isolate.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import 'dart:math' as math;
 import 'package:tflite_flutter/tflite_flutter.dart';
@@ -8,26 +9,55 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 class YoloDetector {
   final List<String> classes = ["10C", "10D", "10H", "10S", "2C", "2D", "2H", "2S", "3C", "3D", "3H", "3S", "4C", "4D", "4H", "4S", "5C", "5D", "5H", "5S", "6C", "6D", "6H", "6S", "7C", "7D", "7H", "7S", "8C", "8D", "8H", "8S", "9C", "9D", "9H", "9S", "AC", "AD", "AH", "AS", "JC", "JD", "JH", "JS", "KC", "KD", "KH", "KS", "QC", "QD", "QH", "QS"];
 
+  List<YOLODetection>? detections;
+  img.Image? processedImage;
+
   YoloDetector();
 
-  Future<List<YOLODetection>> detectObjects(img.Image image, TfliteModelIsolate model) async {
+  Future<void> detectObjects(img.Image image, TfliteModelIsolate model) async {
     final int originalWidth = image.width;
     final int originalHeight = image.height;
 
     final int inputImageSize = model.inputShape[1];
 
-    final input = await compute(preprocessImage, {'image': image, 'inputImageSize': inputImageSize});
+    final result = await compute(preprocessImage, {'image': image, 'inputImageSize': inputImageSize});
+
+    final input = result['tensor'];
+    processedImage = result['processedImage'];
 
     List<List<List<double>>> output = (await model.runInference(input)).cast<List<List<double>>>();
 
-    return processYOLOOutput(output, classes, model.outputShape, originalWidth, originalHeight);
+    detections = processYOLOOutput(output, classes, model.outputShape, processedImage!.width, processedImage!.height);
+
+    drawBoundaryBoxes();
   }
 
-  Future<List<List<List<List<double>>>>> preprocessImage(Map<String, dynamic> params) async {
-    img.Image image = params['image'];
-    int inputImageSize = params['inputImageSize'];
+  Future<Map<String, dynamic>> preprocessImage(Map<String, dynamic> params) async {
+    // img.Image image = params['image'];
+    // int inputImageSize = params['inputImageSize'];
+    // img.Image resized = img.copyResize(image, width: inputImageSize, height: inputImageSize);
 
-    img.Image resized = img.copyResize(image, width: inputImageSize, height: inputImageSize);
+    //=================================
+
+    img.Image image = params['image'];
+    int inputImageSize = params['inputImageSize']; // e.g. 640
+
+    // Original size
+    int origWidth = image.width; // 1280
+    int origHeight = image.height; // 720
+
+    // Calculate square crop size based on smaller dimension (height)
+    int cropSize = origHeight; // 720
+
+    // Calculate left-top corner for center crop
+    int cropX = ((origWidth - cropSize) / 2).round(); // (1280-720)/2 = 280
+    int cropY = 0; // no vertical crop, use full height
+
+    // Crop to square (720x720)
+    img.Image cropped = img.copyCrop(image, x: cropX, y: cropY, width: cropSize, height: cropSize);
+
+    // Resize to model input size (640x640)
+    img.Image resized = img.copyResize(cropped, width: inputImageSize, height: inputImageSize);
 
     List<List<List<double>>> imageData = List.generate(inputImageSize, (_) => List.generate(inputImageSize, (_) => List.filled(3, 0.0)));
 
@@ -40,8 +70,10 @@ class YoloDetector {
       }
     }
 
-    // Wrap into batch size of 1
-    return [imageData];
+    return {
+      'tensor': [imageData], // shape: 1x640x640x3
+      'processedImage': resized,
+    };
   }
 
   List<YOLODetection> processYOLOOutput(List<List<List<double>>> yoloOutput, List<String> classes, List<int> outputShape, int imageWidthOriginal, int imageHeightOriginal) {
@@ -61,7 +93,7 @@ class YoloDetector {
         }
       }
 
-      if (bestClassScore < 0.3) continue;
+      if (bestClassScore < 0.5) continue;
 
       final detection = YOLODetection()
         ..classIndex = bestClass
@@ -104,6 +136,19 @@ class YoloDetector {
 
     double union = box1Area + box2Area - intersection;
     return union > 0 ? intersection / union : 0;
+  }
+
+  void drawBoundaryBoxes() {
+    for (var detection in detections!) {
+      print("${detection.className} - ${detection.confidence} - ${detection.boxX}, ${detection.boxY}, ${detection.boxWidth}, ${detection.boxHeight}");
+      // Convert center-based coords to corner-based
+      final x1 = (detection.boxX - detection.boxWidth / 2).toInt();
+      final y1 = (detection.boxY - detection.boxHeight / 2).toInt();
+      final x2 = (detection.boxX + detection.boxWidth / 2).toInt();
+      final y2 = (detection.boxY + detection.boxHeight / 2).toInt();
+
+      img.drawRect(processedImage!, x1: x1, y1: y1, x2: x2, y2: y2, color: img.ColorRgb8(0, 255, 0), thickness: 2);
+    }
   }
 }
 
