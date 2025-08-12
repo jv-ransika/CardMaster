@@ -52,7 +52,7 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
 
   img.Image? _currentImage;
 
-  GameHandler gameHandler = GameHandler();
+  late GameHandler gameHandler;
 
   late CamerasViewController camerasViewController;
   late GameViewController gameViewController;
@@ -153,6 +153,19 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
       _loadModels();
     });
 
+    // GameHandler
+    gameHandler = GameHandler(
+      onSayTrumpSuit: () {
+        updateGameView();
+      },
+      onScoreUpdate: () {
+        updateGameView();
+      },
+      onActionResponse: (String response) {
+        botInputHandler.sendString(response);
+      },
+    );
+
     // Image capture listeners
 
     imageInputHandlerOuter.listenToOnImageCaptured((int width, int height) async {
@@ -212,11 +225,11 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
       switch (line) {
         //======================================
         case "card-in":
-          gameHandler.btnCardInPressed = true;
+          gameHandler.currentAction = BotAction.btnCardInPressed;
           imageInputHandlerInner.captureImage();
           break;
         case "card-out":
-          gameHandler.btnCardOutPressed = true;
+          gameHandler.currentAction = BotAction.btnCardOutPressed;
           imageInputHandlerOuter.captureImage();
           break;
         //======================================
