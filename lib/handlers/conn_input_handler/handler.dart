@@ -8,6 +8,8 @@ class ConnectionInputHandler {
 
   Function(Uint8List)? onSendCommand;
 
+  bool connected = false;
+
   void pushBytes(Uint8List bytes) {
     // Handle incoming bytes
   }
@@ -23,10 +25,12 @@ class ConnectionInputHandler {
   }
 
   void notifyConnected() {
+    connected = true;
     if (onConnected != null) onConnected!();
   }
 
   void notifyDisconnected() {
+    connected = false;
     if (onDisconnected != null) onDisconnected!();
   }
 }
