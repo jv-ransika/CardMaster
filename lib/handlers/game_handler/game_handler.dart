@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:ui';
 import 'package:card_master/tflite/yolo_detector.dart';
 import 'package:flutter/material.dart';
@@ -12,20 +13,23 @@ class GameHandler {
    * S7, S8, S9, S10, SJ, SQ, SK, SA
    */
 
+  final List<String> suitOrder = ["H", "D", "C", "S"];
   final List<String> valueOrder = ["7", "8", "9", "10", "J", "Q", "K", "A"];
-
   final List<String> labelOrder = ["H7", "H8", "H9", "H10", "HJ", "HQ", "HK", "HA", "D7", "D8", "D9", "D10", "DJ", "DQ", "DK", "DA", "C7", "C8", "C9", "C10", "CJ", "CQ", "CK", "CA", "S7", "S8", "S9", "S10", "SJ", "SQ", "SK", "SA"];
+
+  final Map<String, String> nextPlayerOf = {"me": "right", "right": "infront", "infront": "left", "left": "me"};
 
   bool isValid = false;
 
-  final Map<String, String?> cardsOnBoard = {"me": null, "infront": null, "left": null, "right": null};
+  final Map<String, String?> cardsOnDesk = {"me": null, "infront": null, "left": null, "right": null};
   String? currentInputCardSymbol;
 
   List<String?> stack = [null, null, null, null, null, null, null, null]; // Current stack
   String? trumpSuit; // Current trump suit
   List<String> cardUsedSoFar = [];
 
-  String? beginSuitOfCurrentRound;
+  String? beginSuitOfCurrentTrick;
+  String? beginPlayerOfCurrentTrick;
 
   int ourScore = 0;
   int opponentScore = 0;
@@ -43,8 +47,8 @@ class GameHandler {
   void reset() {
     isValid = false;
     currentInputCardSymbol = null;
-    cardsOnBoard.forEach((key, value) {
-      cardsOnBoard[key] = null;
+    cardsOnDesk.forEach((key, value) {
+      cardsOnDesk[key] = null;
     });
 
     stack = [null, null, null, null, null, null, null, null];
@@ -61,8 +65,8 @@ class GameHandler {
   }
 
   void analyzeOuterCamDetections(List<YOLODetection> detections, double imgWidth, double imgHeight) {
-    cardsOnBoard.forEach((key, value) {
-      cardsOnBoard[key] = null;
+    cardsOnDesk.forEach((key, value) {
+      cardsOnDesk[key] = null;
     });
 
     final centers = _calcDistinctClassCenters(detections);
@@ -83,13 +87,13 @@ class GameHandler {
       double dy = center.dy - boardCenterY;
 
       if (dy > 0 && dy.abs() > dx.abs()) {
-        cardsOnBoard["me"] = className; // My card
+        cardsOnDesk["me"] = className; // My card
       } else if (dy < 0 && dy.abs() > dx.abs()) {
-        cardsOnBoard["infront"] = className; // Partner's card
+        cardsOnDesk["infront"] = className; // Partner's card
       } else if (dx < 0) {
-        cardsOnBoard["left"] = className; // Opponent 1's card
+        cardsOnDesk["left"] = className; // Opponent 1's card
       } else {
-        cardsOnBoard["right"] = className; // Opponent 2's card
+        cardsOnDesk["right"] = className; // Opponent 2's card
       }
     }
 
@@ -103,7 +107,6 @@ class GameHandler {
         break;
       case BotAction.btnCardOutPressed:
         sendResponseForBtnCardOut();
-        _determineBeginSuitOfCurrentRound();
         break;
       case BotAction.btnDetermineCurrentRoundScoresPressed:
         sendResponseForBtnDetermineCurrentRoundScores();
@@ -120,10 +123,12 @@ class GameHandler {
   }
 
   void sendResponseForBtnDetermineCurrentRoundScores() {
+    _addOtherPlayedCardsToCardUsedSoFar();
+
     String? maxPlayer;
     int maxMark = 0;
 
-    cardsOnBoard.forEach((player, card) {
+    cardsOnDesk.forEach((player, card) {
       if (card != null) {
         int mark = _cardToMark(card);
         if (mark > maxMark) {
@@ -161,12 +166,6 @@ class GameHandler {
   }
 
   void sendResponseForBtnCardOut() async {
-    for (var card in cardsOnBoard.values) {
-      if (card != null && !cardUsedSoFar.contains(card)) {
-        cardUsedSoFar.add(card);
-      }
-    }
-
     // Bot need to say the trump if the length of stack is 4 and trumpSuit is not set
     if (stack.length == 4 && trumpSuit == null) {
       _determineTrumpSuit();
@@ -175,10 +174,102 @@ class GameHandler {
       return;
     }
 
+    // Add other played cards into cardUsedSoFar
+    _addOtherPlayedCardsToCardUsedSoFar();
+
+    if (_deskCardCount() > 0) {
+      // Beginner of current trick is not me
+      _determineBeginSuitOfCurrentTrick();
+    } else {
+      // Beginner of current trick is me
+      beginSuitOfCurrentTrick = null;
+      beginPlayerOfCurrentTrick = "me";
+    }
+
+    //============== Prepare inputs to feed to model ==============
+
+    // Input: trump_suit (shape [1], type int64) -> H, D, C, S
+    // Ex: Int64List.fromList([3])
+    List<int> trump_suit = [suitOrder.indexOf(trumpSuit!)];
+    trump_suit = Int64List.fromList(trump_suit);
+
+    // Input: hand (shape [1, 8], type int64) -> index of symbol
+    // Ex: Int64List.fromList([10, 14, 25, 28, 0, 0, 0, 0]);
+    List<int> hand = stack.map((card) {
+      if (card == null) return 0;
+      return _getCardIndex(card);
+    }).toList();
+    hand = Int64List.fromList(hand);
+
+    // Input: desk (shape [1, 4], type int64)
+    // Ex: Int64List.fromList([5, 9, 0, 0]); | <beginPlayerOfCurrentTrick, nextPlayer, nextPlayer, nextPlayer>
+    List<int> desk = [];
+    if (beginSuitOfCurrentTrick != null) {
+      String temp = beginPlayerOfCurrentTrick!;
+      for (var i = 0; i < 4; i++) {
+        desk.add(cardsOnDesk[temp] != null ? _getCardIndex(cardsOnDesk[temp]!) : 0);
+        temp = nextPlayerOf[temp]!;
+      }
+    } else {
+      desk = [0, 0, 0, 0];
+    }
+    desk = Int64List.fromList(desk);
+
+    // Input: played (shape [1, 32], type int64)
+    // Ex: Int64List(32);
+    List<int> played = [];
+    for (var card in cardUsedSoFar) {
+      played.add(_getCardIndex(card));
+    }
+    for (var i = 0; i < labelOrder.length - cardUsedSoFar.length; i++) {
+      played.add(0); // Padding with 0
+    }
+    played = Int64List.fromList(played);
+
+    // Input: valid_actions (shape [1, 32], type boolean)
+    // Ex:  [List.generate(32, (i) => i == 10 || i == 14 || i == 25 || i == 28)]
+    List<bool> valid_actions = List.generate(labelOrder.length, (index) => false);
+
+    String? currentSuit = beginSuitOfCurrentTrick;
+
+    if (currentSuit != null && stack.any((card) => card != null && _getCardSuit(card) == currentSuit)) {
+      for (var card in stack) {
+        if (card != null && _getCardSuit(card) == currentSuit) {
+          valid_actions[_getCardIndex(card)] = true;
+        }
+      }
+    } else {
+      for (var card in stack) {
+        if (card != null) {
+          valid_actions[_getCardIndex(card)] = true;
+        }
+      }
+    }
+
+    //=============================================================
+
     String predictedCard = await onGetPredictedCard();
+
+    // Set the begin suit of the current trick (begin player "me")
+    beginSuitOfCurrentTrick = _getCardSuit(predictedCard);
+
+    // Add predictedCard to cardUsedSoFar
+    if (!cardUsedSoFar.contains(predictedCard)) {
+      cardUsedSoFar.add(predictedCard);
+    }
+
+    actionResponse = predictedCard;
   }
 
-  void _determineTrumpSuit() {
+  _addOtherPlayedCardsToCardUsedSoFar() {
+    for (var entry in cardsOnDesk.entries) {
+      if (entry.key != "me" && entry.value != null && !cardUsedSoFar.contains(entry.value)) {
+        cardUsedSoFar.add(entry.value!);
+      }
+    }
+  }
+
+  _determineTrumpSuit() {
     // The mostly existing suit of current stack is the trump suit
     Map<String, int> suitCount = {};
     for (var card in stack) {
@@ -214,15 +305,15 @@ class GameHandler {
     }
   }
 
-  String _determineBeginSuitOfCurrentRound() {
-    // Move through me -> left -> infront -> right, and find the first non-null card
-    for (var position in ["me", "left", "infront", "right"]) {
-      if (cardsOnBoard[position] != null) {
-        beginSuitOfCurrentRound = cardsOnBoard[position]!.substring(cardsOnBoard[position]!.length - 1);
+  _determineBeginSuitOfCurrentTrick() {
+    // Move through me -> right -> infront -> left, and find the first non-null card
+    for (var position in ["me", "right", "infront", "left"]) {
+      if (cardsOnDesk[position] != null) {
+        beginSuitOfCurrentTrick = _getCardSuit(cardsOnDesk[position]!);
+        beginPlayerOfCurrentTrick = position;
         break;
       }
     }
-    return beginSuitOfCurrentRound ?? "";
   }
 
   int _cardToMark(String card) {
@@ -235,7 +326,7 @@ class GameHandler {
 
     if (suit == trumpSuit) {
       mark += 16;
-    } else if (suit == beginSuitOfCurrentRound) {
+    } else if (suit == beginSuitOfCurrentTrick) {
       mark += 8;
     }
 
@@ -248,6 +339,14 @@ class GameHandler {
 
   int _getCardValue(String card) {
     return valueOrder.indexOf(card[1]) + 1;
+  }
+
+  int _getCardIndex(String card) {
+    return labelOrder.indexOf(card);
+  }
+
+  int _deskCardCount() {
+    return cardsOnDesk.values.where((card) => card != null).length;
   }
 
   int _stackCardCount() {

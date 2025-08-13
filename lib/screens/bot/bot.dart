@@ -179,7 +179,7 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
       //...
       camerasViewController.outerImage = yoloDetector.processedImage;
       camerasViewController.progressOuterImage = 0.0;
-      camerasViewController.cardsOnBoard = gameHandler.cardsOnBoard;
+      camerasViewController.cardsOnBoard = gameHandler.cardsOnDesk;
       camerasViewController.update();
       //...
       updateGameView();
