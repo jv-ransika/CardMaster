@@ -35,14 +35,19 @@ class OomiPredictor {
     playedOrt.release();
     validActionsOrt.release();
 
-    // Print the outputs
+    // Analyze the outputs
     for (var output in outputs) {
       if (output != null) {
         final nestedList = output.value as List<List<double>>;
         final flatList = nestedList.expand((inner) => inner).toList();
         debugPrint('Output: $flatList');
         output.release();
-        return flatList.indexOf(1);
+        // Find the index of the predicted card
+        for (var i = 0; i < flatList.length; i++) {
+          if (flatList[i] == 1.0) {
+            return i;
+          }
+        }
       } else {
         debugPrint('Output is null');
       }
