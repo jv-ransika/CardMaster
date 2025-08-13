@@ -345,6 +345,8 @@ class GameHandler {
         break;
       }
     }
+
+    debugPrint("Begin suit of current trick: $beginSuitOfCurrentTrick, player: $beginPlayerOfCurrentTrick");
   }
 
   int _cardToMark(String card) {
