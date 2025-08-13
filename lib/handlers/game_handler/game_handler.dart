@@ -16,7 +16,6 @@ class GameHandler {
   final List<String> suitOrder = ["H", "D", "C", "S"];
   final List<String> valueOrder = ["7", "8", "9", "10", "J", "Q", "K", "A"];
   final List<String> labelOrder = ["H7", "H8", "H9", "H10", "HJ", "HQ", "HK", "HA", "D7", "D8", "D9", "D10", "DJ", "DQ", "DK", "DA", "C7", "C8", "C9", "C10", "CJ", "CQ", "CK", "CA", "S7", "S8", "S9", "S10", "SJ", "SQ", "SK", "SA"];
-
   final Map<String, String> nextPlayerOf = {"me": "right", "right": "infront", "infront": "left", "left": "me"};
 
   bool isValid = false;
@@ -46,18 +45,30 @@ class GameHandler {
 
   void reset() {
     isValid = false;
-    currentInputCardSymbol = null;
+
     cardsOnDesk.forEach((key, value) {
       cardsOnDesk[key] = null;
     });
+    currentInputCardSymbol = null;
 
     stack = [null, null, null, null, null, null, null, null];
+    trumpSuit = null;
     cardUsedSoFar.clear();
+
+    beginSuitOfCurrentTrick = null;
+    beginPlayerOfCurrentTrick = null;
+
+    ourScore = 0;
+    opponentScore = 0;
+
+    currentAction = null;
+    actionResponse = null;
   }
 
   void analyzeInnerCamDetections(List<YOLODetection> detections) {
     if (detections.isNotEmpty) {
       currentInputCardSymbol = detections.first.className;
+      debugPrint("Current Input Card Symbol: $currentInputCardSymbol");
       performActions();
     } else {
       currentInputCardSymbol = null;
@@ -96,6 +107,8 @@ class GameHandler {
         cardsOnDesk["right"] = className; // Opponent 2's card
       }
     }
+
+    debugPrint("Cards on Desk: $cardsOnDesk");
 
     performActions();
   }
@@ -141,14 +154,17 @@ class GameHandler {
     if (maxPlayer == "me" || maxPlayer == "infront") {
       ourScore += 1;
       actionResponse = "win";
+      debugPrint("We won the trick! Score: $ourScore, Opponent Score: $opponentScore");
     } else {
       opponentScore += 1;
       actionResponse = "loss";
+      debugPrint("We lost the trick! Our Score: $ourScore, Opponent Score: $opponentScore");
     }
 
     // If stack card count is 0, the current round is over
     if (_stackCardCount() == 0) {
       actionResponse = actionResponse! + "-final";
+      debugPrint("Round over! Our Score: $ourScore, Opponent Score: $opponentScore");
     }
 
     onScoreUpdate();
@@ -253,6 +269,9 @@ class GameHandler {
 
     String predictedCard = labelOrder[predictedIndex];
 
+    // Remove predictedCard from stack
+    _removeCardFromStack(predictedCard);
+
     // Set the begin suit of the current trick (begin player "me")
     beginSuitOfCurrentTrick = _getCardSuit(predictedCard);
 
@@ -262,6 +281,15 @@ class GameHandler {
     }
 
     actionResponse = predictedCard;
+  }
+
+  _removeCardFromStack(String card) {
+    for (var i = 0; i < stack.length; i++) {
+      if (stack[i] == card) {
+        stack[i] = null;
+        break;
+      }
+    }
   }
 
   _addOtherPlayedCardsToCardUsedSoFar() {
