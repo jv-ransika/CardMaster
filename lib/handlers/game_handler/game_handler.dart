@@ -36,8 +36,9 @@ class GameHandler {
   final Function onSayTrumpSuit;
   final Function onScoreUpdate;
   final Function(String response) onActionResponse;
+  final Future<String> Function() onGetPredictedCard;
 
-  GameHandler({required this.onSayTrumpSuit, required this.onScoreUpdate, required this.onActionResponse});
+  GameHandler({required this.onSayTrumpSuit, required this.onScoreUpdate, required this.onActionResponse, required this.onGetPredictedCard});
 
   void reset() {
     isValid = false;
@@ -110,6 +111,8 @@ class GameHandler {
       default:
     }
 
+    currentAction = null;
+
     if (actionResponse != null) {
       onActionResponse(actionResponse!);
       actionResponse = null;
@@ -154,10 +157,10 @@ class GameHandler {
       }
     }
 
-    //...
+    actionResponse = currentInputCardSymbol;
   }
 
-  void sendResponseForBtnCardOut() {
+  void sendResponseForBtnCardOut() async {
     for (var card in cardsOnBoard.values) {
       if (card != null && !cardUsedSoFar.contains(card)) {
         cardUsedSoFar.add(card);
@@ -166,12 +169,16 @@ class GameHandler {
 
     // Bot need to say the trump if the length of stack is 4 and trumpSuit is not set
     if (stack.length == 4 && trumpSuit == null) {
-      sayTrumpSuit();
+      _determineTrumpSuit();
+      onSayTrumpSuit();
+      actionResponse = trumpSuit;
       return;
     }
+
+    String predictedCard = await onGetPredictedCard();
   }
 
-  void sayTrumpSuit() {
+  void _determineTrumpSuit() {
     // The mostly existing suit of current stack is the trump suit
     Map<String, int> suitCount = {};
     for (var card in stack) {
@@ -205,8 +212,6 @@ class GameHandler {
         }
       }
     }
-
-    onSayTrumpSuit();
   }
 
   String _determineBeginSuitOfCurrentRound() {
