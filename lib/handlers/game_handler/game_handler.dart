@@ -40,7 +40,7 @@ class GameHandler {
   final Function onSayTrumpSuit;
   final Function onScoreUpdate;
   final Function(String response) onActionResponse;
-  final Future<String> Function(Int64List trumpSuitData, Int64List handData, Int64List deskData, Int64List playedData, List<bool> validActionsData) onGetPredictedCard;
+  final Future<int> Function(Int64List trumpSuitData, Int64List handData, Int64List deskData, Int64List playedData, List<bool> validActionsData) onGetPredictedCard;
 
   GameHandler({required this.onSayTrumpSuit, required this.onScoreUpdate, required this.onActionResponse, required this.onGetPredictedCard});
 
@@ -194,10 +194,12 @@ class GameHandler {
 
     // Input: hand (shape [1, 8], type int64) -> index of symbol
     // Ex: Int64List.fromList([10, 14, 25, 28, 0, 0, 0, 0]);
-    Int64List handData = Int64List.fromList(stack.map((card) {
-      if (card == null) return 0;
-      return _getCardIndex(card);
-    }).toList());
+    Int64List handData = Int64List.fromList(
+      stack.map((card) {
+        if (card == null) return 0;
+        return _getCardIndex(card);
+      }).toList(),
+    );
 
     // Input: desk (shape [1, 4], type int64)
     // Ex: Int64List.fromList([5, 9, 0, 0]); | <beginPlayerOfCurrentTrick, nextPlayer, nextPlayer, nextPlayer>
@@ -244,7 +246,12 @@ class GameHandler {
 
     //=============================================================
 
-    String predictedCard = await onGetPredictedCard(trumpSuitData, handData, deskData, playedData, validActionsData);
+    int predictedIndex = await onGetPredictedCard(trumpSuitData, handData, deskData, playedData, validActionsData);
+    if (predictedIndex == -1) {
+      throw Exception("Failed to predict card");
+    }
+
+    String predictedCard = labelOrder[predictedIndex];
 
     // Set the begin suit of the current trick (begin player "me")
     beginSuitOfCurrentTrick = _getCardSuit(predictedCard);

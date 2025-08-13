@@ -156,16 +156,20 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
     // GameHandler
     gameHandler = GameHandler(
       onSayTrumpSuit: () {
+        debugPrint("Trump Suit: ${gameHandler.trumpSuit}");
         updateGameView();
       },
       onScoreUpdate: () {
+        debugPrint("Score Updated");
         updateGameView();
       },
       onActionResponse: (String response) {
+        debugPrint("Action Response: $response");
         botInputHandler.sendString(response);
       },
       onGetPredictedCard: (Int64List trumpSuitData, Int64List handData, Int64List deskData, Int64List playedData, List<bool> validActionsData) async {
-        return gameHandler.stack[0]!;
+        debugPrint("Getting predicted card...");
+        return await oomiPredictor.predict(trumpSuitData, handData, deskData, playedData, validActionsData, oomiModel);
       },
     );
 
