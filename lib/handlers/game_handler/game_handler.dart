@@ -40,7 +40,7 @@ class GameHandler {
   final Function onSayTrumpSuit;
   final Function onScoreUpdate;
   final Function(String response) onActionResponse;
-  final Future<String> Function() onGetPredictedCard;
+  final Future<String> Function(Int64List trumpSuitData, Int64List handData, Int64List deskData, Int64List playedData, List<bool> validActionsData) onGetPredictedCard;
 
   GameHandler({required this.onSayTrumpSuit, required this.onScoreUpdate, required this.onActionResponse, required this.onGetPredictedCard});
 
@@ -190,65 +190,61 @@ class GameHandler {
 
     // Input: trump_suit (shape [1], type int64) -> H, D, C, S
     // Ex: Int64List.fromList([3])
-    List<int> trump_suit = [suitOrder.indexOf(trumpSuit!)];
-    trump_suit = Int64List.fromList(trump_suit);
+    Int64List trumpSuitData = Int64List.fromList([suitOrder.indexOf(trumpSuit!)]);
 
     // Input: hand (shape [1, 8], type int64) -> index of symbol
     // Ex: Int64List.fromList([10, 14, 25, 28, 0, 0, 0, 0]);
-    List<int> hand = stack.map((card) {
+    Int64List handData = Int64List.fromList(stack.map((card) {
       if (card == null) return 0;
       return _getCardIndex(card);
-    }).toList();
-    hand = Int64List.fromList(hand);
+    }).toList());
 
     // Input: desk (shape [1, 4], type int64)
     // Ex: Int64List.fromList([5, 9, 0, 0]); | <beginPlayerOfCurrentTrick, nextPlayer, nextPlayer, nextPlayer>
-    List<int> desk = [];
+    Int64List deskData = Int64List(0);
     if (beginSuitOfCurrentTrick != null) {
       String temp = beginPlayerOfCurrentTrick!;
       for (var i = 0; i < 4; i++) {
-        desk.add(cardsOnDesk[temp] != null ? _getCardIndex(cardsOnDesk[temp]!) : 0);
+        deskData.add(cardsOnDesk[temp] != null ? _getCardIndex(cardsOnDesk[temp]!) : 0);
         temp = nextPlayerOf[temp]!;
       }
     } else {
-      desk = [0, 0, 0, 0];
+      deskData = [0, 0, 0, 0] as Int64List;
     }
-    desk = Int64List.fromList(desk);
 
     // Input: played (shape [1, 32], type int64)
     // Ex: Int64List(32);
-    List<int> played = [];
+    Int64List playedData = Int64List(32);
     for (var card in cardUsedSoFar) {
-      played.add(_getCardIndex(card));
+      playedData[_getCardIndex(card)] = 1;
     }
     for (var i = 0; i < labelOrder.length - cardUsedSoFar.length; i++) {
-      played.add(0); // Padding with 0
+      playedData.add(0); // Padding with 0
     }
-    played = Int64List.fromList(played);
 
     // Input: valid_actions (shape [1, 32], type boolean)
     // Ex:  [List.generate(32, (i) => i == 10 || i == 14 || i == 25 || i == 28)]
-    List<bool> valid_actions = List.generate(labelOrder.length, (index) => false);
+    List<bool> validActionsData = List.generate(labelOrder.length, (index) => false);
 
     String? currentSuit = beginSuitOfCurrentTrick;
 
     if (currentSuit != null && stack.any((card) => card != null && _getCardSuit(card) == currentSuit)) {
       for (var card in stack) {
         if (card != null && _getCardSuit(card) == currentSuit) {
-          valid_actions[_getCardIndex(card)] = true;
+          validActionsData[_getCardIndex(card)] = true;
         }
       }
     } else {
       for (var card in stack) {
         if (card != null) {
-          valid_actions[_getCardIndex(card)] = true;
+          validActionsData[_getCardIndex(card)] = true;
         }
       }
     }
 
     //=============================================================
 
-    String predictedCard = await onGetPredictedCard();
+    String predictedCard = await onGetPredictedCard(trumpSuitData, handData, deskData, playedData, validActionsData);
 
     // Set the begin suit of the current trick (begin player "me")
     beginSuitOfCurrentTrick = _getCardSuit(predictedCard);
