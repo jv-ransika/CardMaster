@@ -164,7 +164,7 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
       onActionResponse: (String response) {
         botInputHandler.sendString(response);
       },
-      onGetPredictedCard: () async {
+      onGetPredictedCard: (Int64List trumpSuitData, Int64List handData, Int64List deskData, Int64List playedData, List<bool> validActionsData) async {
         return gameHandler.stack[0]!;
       },
     );
