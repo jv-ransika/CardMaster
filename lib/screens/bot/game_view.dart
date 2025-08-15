@@ -1,4 +1,5 @@
 import 'package:card_master/components/card_stack.dart';
+import 'package:card_master/components/current_scores.dart';
 import 'package:card_master/components/current_trump.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
@@ -30,7 +31,12 @@ class _GameViewState extends State<GameView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Trump suit selector section
+            // Current scores
+            Text("Select Scores", style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            CurrentScores(ourScore: widget.controller.ourScore, opponentScore: widget.controller.opponentScore),
+
+            // Current trump suit
             Text("Select Trump Suit", style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Container(
@@ -69,6 +75,8 @@ class GameViewController {
 
   List<String?> stack = [null, null, null, null, null, null, null, null];
   String? trumpSuit;
+  int ourScore = 0;
+  int opponentScore = 0;
 
   Function? onUpdate;
 
