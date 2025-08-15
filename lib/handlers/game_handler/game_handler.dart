@@ -65,6 +65,18 @@ class GameHandler {
     actionResponse = null;
   }
 
+  void printAllValues() {
+    debugPrint("Cards on Desk: $cardsOnDesk");
+    debugPrint("Current Input Card Symbol: $currentInputCardSymbol");
+    debugPrint("Stack: $stack");
+    debugPrint("Trump Suit: $trumpSuit");
+    debugPrint("Card Used So Far: $cardUsedSoFar");
+    debugPrint("Begin Suit Of Current Trick: $beginSuitOfCurrentTrick");
+    debugPrint("Begin Player Of Current Trick: $beginPlayerOfCurrentTrick");
+    debugPrint("Our Score: $ourScore");
+    debugPrint("Opponent Score: $opponentScore");
+  }
+
   void analyzeInnerCamDetections(List<YOLODetection> detections) {
     if (detections.isNotEmpty) {
       currentInputCardSymbol = detections.first.className;
@@ -130,6 +142,7 @@ class GameHandler {
     currentAction = null;
 
     if (actionResponse != null) {
+      printAllValues();
       onActionResponse(actionResponse!);
       actionResponse = null;
     }
@@ -171,14 +184,25 @@ class GameHandler {
   }
 
   void sendResponseForBtnCardIn() {
+    // Resend last card index if exists
+    if (_isCardExistsInStack(currentInputCardSymbol!)) {
+      debugPrint("Resending last card index for: $currentInputCardSymbol");
+      int lastIndex = stack.lastIndexOf(currentInputCardSymbol!);
+      actionResponse = "res-in-${lastIndex + 1}";
+      return;
+    }
+
+    int insertedIndex = -1;
+
     for (int i = 0; i < stack.length; i++) {
       if (stack[i] == null) {
         stack[i] = currentInputCardSymbol;
+        insertedIndex = i;
         break;
       }
     }
 
-    actionResponse = currentInputCardSymbol;
+    actionResponse = "res-in-${insertedIndex + 1}";
   }
 
   void sendResponseForBtnCardOut() async {
@@ -186,7 +210,7 @@ class GameHandler {
     if (stack.length == 4 && trumpSuit == null) {
       _determineTrumpSuit();
       onSayTrumpSuit();
-      actionResponse = trumpSuit;
+      actionResponse = "res-$trumpSuit";
       return;
     }
 
@@ -380,6 +404,10 @@ class GameHandler {
 
   int _deskCardCount() {
     return cardsOnDesk.values.where((card) => card != null).length;
+  }
+
+  bool _isCardExistsInStack(String card) {
+    return stack.contains(card);
   }
 
   int _stackCardCount() {
