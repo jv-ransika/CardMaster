@@ -84,8 +84,8 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
 
     logsViewController = LogsViewController();
     logsViewController.onSendText = (String text) {
+      debugPrint("Sending text: $text");
       botInputHandler.sendString(text);
-      logsViewController.addLog(text, LogType.sent);
     };
 
     tabs = [
