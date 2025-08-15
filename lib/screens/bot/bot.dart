@@ -83,6 +83,10 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
     );
 
     logsViewController = LogsViewController();
+    logsViewController.onSendText = (String text) {
+      botInputHandler.sendString(text);
+      logsViewController.addLog(text, LogType.sent);
+    };
 
     tabs = [
       ConnectionsView(inputHandlers: {"Outer Camera": imageInputHandlerOuter, "Inner Camera": imageInputHandlerInner, "Bot": botInputHandler}),
@@ -139,6 +143,8 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
   void updateGameView() {
     gameViewController.stack = gameHandler.stack;
     gameViewController.trumpSuit = gameHandler.trumpSuit;
+    gameViewController.ourScore = gameHandler.ourScore;
+    gameViewController.opponentScore = gameHandler.opponentScore;
     gameViewController.update();
   }
 
@@ -193,7 +199,7 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
       debugPrint("Inner Image Captured: Width: $width, Height: $height");
       //==== pad image to 800x800 (240x240 is received, to more accuracy we do this)
       final originalImage = imageInputHandlerInner.image!;
-      _currentImage = img.copyExpandCanvas(originalImage, newWidth: 800, newHeight: 800, backgroundColor: img.ColorRgb8(255, 255, 255));
+      _currentImage = img.copyExpandCanvas(originalImage, newWidth: 1200, newHeight: 1200, backgroundColor: img.ColorRgb8(255, 255, 255));
       //============================================================================
       await detectCurrentImage();
       gameHandler.analyzeInnerCamDetections(yoloDetector.detections!);
@@ -225,13 +231,13 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
 
       // Detect logs (starts with "log -")
       if (line.startsWith("log -")) {
-        logsViewController.addLog(line);
+        logsViewController.addLog(line.substring(6), LogType.received);
         return null;
       }
 
       switch (line) {
         //======================================
-        case "card-in":
+        case "cmd-getCard":
           gameHandler.currentAction = BotAction.btnCardInPressed;
           imageInputHandlerInner.captureImage();
           break;
@@ -276,8 +282,8 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
     imageInputHandlerInner.onConnected = () {};
 
     botInputHandler.onConnected = () {
-      print("hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh");
-      botInputHandler.sendString("hi");
+      debugPrint("Bot connected");
+      botInputHandler.sendString("cmd-hi");
     };
   }
 
