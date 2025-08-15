@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:card_master/screens/bot/bot.dart';
 import 'package:card_master/screens/play/play.dart';
 import 'package:card_master/screens/qr_scan/qr_scan.dart';
