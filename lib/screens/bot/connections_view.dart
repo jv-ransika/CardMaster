@@ -159,7 +159,7 @@ class _DeviceItemState extends State<DeviceItem> {
       await widget.onConnect(conn);
 
       widget.inputHandler.listenToOnSendCommand((command) {
-        if (conn!.isConnected) {
+        if (conn != null && conn!.isConnected) {
           conn!.output.add(command);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Not connected to ${widget.name}")));
