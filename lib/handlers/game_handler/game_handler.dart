@@ -110,7 +110,10 @@ class GameHandler {
         } else if (action == BotAction.btnMainPressed) {
           if (_stackCardCount() == 4) {
             debugPrint("Perform: Say Trump Suit");
-            determineCurrentTrickScores();
+            String? trump = getTrumpSuit();
+            if (trump != null) {
+              actionResponse = "res-trump-$trump";
+            }
             callbackActionResponse();
           }
         }
@@ -122,18 +125,18 @@ class GameHandler {
           afterAnalyzeActionResponse = () {
             if (_deskCardCount() == 4) {
               debugPrint("After Analyze Action Response: Determining Trick Scores (4 Cards)");
-              String result = determineCurrentTrickScores();
+              String result = getCurrentTrickScores();
               actionResponse = "res-result-$result";
             } else {
               debugPrint("After Analyze Action Response: Card Out");
               sendResponseForBtnCardOut();
             }
 
-            // Detect round is over
+            // Detect, round is over
             if (_deskCardCount() == 4 && _stackCardCount() == 0) {
               debugPrint("After Analyze Action Response: Round Over");
               currentState = GameState.roundOver;
-              actionResponse = "$actionResponse-o";
+              actionResponse = "$actionResponse-over";
             }
 
             callbackActionResponse();
@@ -235,14 +238,6 @@ class GameHandler {
   }
 
   void sendResponseForBtnCardOut() async {
-    // Bot need to say the trump if the length of stack is 4 and trumpSuit is not set
-    if (stack.length == 4 && trumpSuit == null) {
-      _determineTrumpSuit();
-      onSayTrumpSuit();
-      actionResponse = "res-$trumpSuit";
-      return;
-    }
-
     // Add other played cards into cardUsedSoFar
     _addOtherPlayedCardsToCardUsedSoFar();
 
@@ -343,43 +338,63 @@ class GameHandler {
 
     // Check if all players have played their cards
     if (_deskCardCount() == 4) {
-      String result = determineCurrentTrickScores();
+      String result = getCurrentTrickScores();
       actionResponse = "$actionResponse-$result";
     }
   }
 
-  String determineCurrentTrickScores() {
+  String? getTrumpSuit() {
+    // Bot need to say the trump if the length of stack is 4 and trumpSuit is not set
+    if (stack.length == 4 && trumpSuit == null) {
+      _determineTrumpSuit();
+      onSayTrumpSuit();
+    }
+
+    return trumpSuit;
+  }
+
+  String getCurrentTrickScores() {
     _addOtherPlayedCardsToCardUsedSoFar();
 
     String res = "";
 
-    String? maxPlayer;
+    List<String> winners = [];
     int maxMark = 0;
 
+    // Find max mark
     cardsOnDesk.forEach((player, card) {
       if (card != null) {
         int mark = _cardToMark(card);
         if (mark > maxMark) {
           maxMark = mark;
-          maxPlayer = player;
         }
       }
     });
 
-    if (maxPlayer == "me" || maxPlayer == "infront") {
-      ourScore += 1;
-      res = "win";
-      debugPrint("We won the trick! Score: $ourScore, Opponent Score: $opponentScore");
-    } else {
-      opponentScore += 1;
-      res = "loss";
-      debugPrint("We lost the trick! Our Score: $ourScore, Opponent Score: $opponentScore");
-    }
+    // Collect all players with that max mark
+    cardsOnDesk.forEach((player, card) {
+      if (card != null && _cardToMark(card) == maxMark) {
+        winners.add(player);
+      }
+    });
 
-    // If stack card count is 0, the current round is over
-    if (_stackCardCount() == 0) {
-      res = "$res-final";
-      debugPrint("Round over! Our Score: $ourScore, Opponent Score: $opponentScore");
+    // Decide result
+    if (winners.length > 1) {
+      // Draw case
+      res = "draw";
+      debugPrint("Trick is a draw! Players: $winners");
+    } else {
+      String maxPlayer = winners.first;
+
+      if (maxPlayer == "me" || maxPlayer == "infront") {
+        ourScore += 1;
+        res = "win";
+        debugPrint("We won the trick! Score: $ourScore, Opponent Score: $opponentScore");
+      } else {
+        opponentScore += 1;
+        res = "loss";
+        debugPrint("We lost the trick! Our Score: $ourScore, Opponent Score: $opponentScore");
+      }
     }
 
     onScoreUpdate();
