@@ -27,11 +27,11 @@ class BotScreen extends StatefulWidget {
 
 class _BotScreenState extends State<BotScreen> {
   /*
-I/flutter (29486): Discovered device: CardMaster - OC (3C:8A:1F:D4:7C:1E)
-D/FlutterBluePlugin(29486): Discovered 08:B6:1F:8E:7A:4E
-I/flutter (29486): Discovered device: CardMaster - IC (08:B6:1F:8E:7A:4E)
-D/FlutterBluePlugin(29486): Discovered 68:25:DD:33:8C:0A
-I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
+  I/flutter (29486): Discovered device: CardMaster - OC (3C:8A:1F:D4:7C:1E)
+  D/FlutterBluePlugin(29486): Discovered 08:B6:1F:8E:7A:4E
+  I/flutter (29486): Discovered device: CardMaster - IC (08:B6:1F:8E:7A:4E)
+  D/FlutterBluePlugin(29486): Discovered 68:25:DD:33:8C:0A
+  I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
   */
 
   int tabIndex = 0;
@@ -238,24 +238,28 @@ I/flutter (29486): Discovered device: CardMaster - Bot (68:25:DD:33:8C:0A)
       switch (line) {
         //======================================
         case "cmd-getCard":
-          gameHandler.currentAction = BotAction.btnCardInPressed;
-          imageInputHandlerInner.captureImage();
+          gameHandler.triggerBotAction(BotAction.btnInPressed);
+          if (gameHandler.cameraCaptureRequired) {
+            imageInputHandlerInner.captureImage();
+          }
           break;
-        case "card-out":
-          gameHandler.currentAction = BotAction.btnCardOutPressed;
-          imageInputHandlerOuter.captureImage();
+        case "cmd-main":
+          gameHandler.triggerBotAction(BotAction.btnMainPressed);
+          if (gameHandler.cameraCaptureRequired) {
+            imageInputHandlerOuter.captureImage();
+          }
           break;
         //======================================
-        case "set-trump-h":
+        case "cmd-H":
           setCurrentTrump("H");
           break;
-        case "set-trump-d":
+        case "cmd-D":
           setCurrentTrump("D");
           break;
-        case "set-trump-c":
+        case "cmd-C":
           setCurrentTrump("C");
           break;
-        case "set-trump-s":
+        case "cmd-S":
           setCurrentTrump("S");
           break;
         //======================================

@@ -3,7 +3,13 @@ import 'dart:ui';
 import 'package:card_master/tflite/yolo_detector.dart';
 import 'package:flutter/material.dart';
 
-enum BotAction { btnCardInPressed, btnCardOutPressed, btnDetermineCurrentRoundScoresPressed }
+enum BotAction { btnInPressed, btnMainPressed }
+
+enum GameState {
+  waitingForCards, // Initial stack filling
+  playingTricks, // Playing trick cards
+  roundOver, // Round finished, scores updated
+}
 
 class GameHandler {
   /**
@@ -33,8 +39,12 @@ class GameHandler {
   int ourScore = 0;
   int opponentScore = 0;
 
-  BotAction? currentAction;
-  String? actionResponse;
+  GameState? currentState = GameState.waitingForCards;
+  String actionResponse = "";
+
+  Function? afterAnalyzeActionResponse; // Closure to be executed after analyzing detections
+
+  bool cameraCaptureRequired = false;
 
   final Function onSayTrumpSuit;
   final Function onScoreUpdate;
@@ -61,8 +71,12 @@ class GameHandler {
     ourScore = 0;
     opponentScore = 0;
 
-    currentAction = null;
-    actionResponse = null;
+    currentState = GameState.waitingForCards;
+    actionResponse = "";
+
+    afterAnalyzeActionResponse = null;
+
+    cameraCaptureRequired = false;
   }
 
   void printAllValues() {
@@ -77,11 +91,66 @@ class GameHandler {
     debugPrint("Opponent Score: $opponentScore");
   }
 
+  void triggerBotAction(BotAction action) {
+    debugPrint("Bot Action: $action");
+
+    switch (currentState!) {
+      case GameState.waitingForCards:
+        if (action == BotAction.btnInPressed) {
+          debugPrint("Perform: Card In, Waiting for inner camera detection...");
+          cameraCaptureRequired = true;
+          afterAnalyzeActionResponse = () {
+            debugPrint("After Analyze Action Response: Card In");
+            sendResponseForBtnCardIn();
+            if (_stackCardCount() == 8) {
+              currentState = GameState.playingTricks;
+            }
+            callbackActionResponse();
+          };
+        } else if (action == BotAction.btnMainPressed) {
+          if (_stackCardCount() == 4) {
+            debugPrint("Perform: Say Trump Suit");
+            determineCurrentTrickScores();
+            callbackActionResponse();
+          }
+        }
+        break;
+      case GameState.playingTricks:
+        if (action == BotAction.btnMainPressed) {
+          debugPrint("Perform: Card Out, Waiting for outer camera detection...");
+          cameraCaptureRequired = true;
+          afterAnalyzeActionResponse = () {
+            if (_deskCardCount() == 4) {
+              debugPrint("After Analyze Action Response: Determining Trick Scores (4 Cards)");
+              String result = determineCurrentTrickScores();
+              actionResponse = "res-result-$result";
+            } else {
+              debugPrint("After Analyze Action Response: Card Out");
+              sendResponseForBtnCardOut();
+            }
+
+            // Detect round is over
+            if (_deskCardCount() == 4 && _stackCardCount() == 0) {
+              debugPrint("After Analyze Action Response: Round Over");
+              currentState = GameState.roundOver;
+              actionResponse = "$actionResponse-o";
+            }
+
+            callbackActionResponse();
+          };
+        }
+        break;
+      case GameState.roundOver:
+        // Handle round over state
+        break;
+    }
+  }
+
   void analyzeInnerCamDetections(List<YOLODetection> detections) {
     if (detections.isNotEmpty) {
       currentInputCardSymbol = detections.first.className;
       debugPrint("Current Input Card Symbol: $currentInputCardSymbol");
-      performActions();
+      performAfterAnalyzeActionResponse();
     } else {
       currentInputCardSymbol = null;
     }
@@ -110,7 +179,7 @@ class GameHandler {
       double dy = center.dy - boardCenterY;
 
       if (dy > 0 && dy.abs() > dx.abs()) {
-        cardsOnDesk["me"] = className; // My card
+        // cardsOnDesk["me"] = className; // My card
       } else if (dy < 0 && dy.abs() > dx.abs()) {
         cardsOnDesk["infront"] = className; // Partner's card
       } else if (dx < 0) {
@@ -122,65 +191,20 @@ class GameHandler {
 
     debugPrint("Cards on Desk: $cardsOnDesk");
 
-    performActions();
+    performAfterAnalyzeActionResponse();
   }
 
-  void performActions() {
-    switch (currentAction) {
-      case BotAction.btnCardInPressed:
-        sendResponseForBtnCardIn();
-        break;
-      case BotAction.btnCardOutPressed:
-        sendResponseForBtnCardOut();
-        break;
-      case BotAction.btnDetermineCurrentRoundScoresPressed:
-        sendResponseForBtnDetermineCurrentRoundScores();
-        break;
-      default:
-    }
-
-    currentAction = null;
-
-    if (actionResponse != null) {
-      printAllValues();
-      onActionResponse(actionResponse!);
-      actionResponse = null;
-    }
+  void performAfterAnalyzeActionResponse() {
+    if (afterAnalyzeActionResponse == null) return;
+    afterAnalyzeActionResponse!();
+    afterAnalyzeActionResponse = null;
   }
 
-  void sendResponseForBtnDetermineCurrentRoundScores() {
-    _addOtherPlayedCardsToCardUsedSoFar();
-
-    String? maxPlayer;
-    int maxMark = 0;
-
-    cardsOnDesk.forEach((player, card) {
-      if (card != null) {
-        int mark = _cardToMark(card);
-        if (mark > maxMark) {
-          maxMark = mark;
-          maxPlayer = player;
-        }
-      }
-    });
-
-    if (maxPlayer == "me" || maxPlayer == "infront") {
-      ourScore += 1;
-      actionResponse = "win";
-      debugPrint("We won the trick! Score: $ourScore, Opponent Score: $opponentScore");
-    } else {
-      opponentScore += 1;
-      actionResponse = "loss";
-      debugPrint("We lost the trick! Our Score: $ourScore, Opponent Score: $opponentScore");
-    }
-
-    // If stack card count is 0, the current round is over
-    if (_stackCardCount() == 0) {
-      actionResponse = actionResponse! + "-final";
-      debugPrint("Round over! Our Score: $ourScore, Opponent Score: $opponentScore");
-    }
-
-    onScoreUpdate();
+  void callbackActionResponse() {
+    if (actionResponse == "") return;
+    printAllValues();
+    onActionResponse(actionResponse);
+    actionResponse = "";
   }
 
   void sendResponseForBtnCardIn() {
@@ -189,6 +213,11 @@ class GameHandler {
       debugPrint("Resending last card index for: $currentInputCardSymbol");
       int lastIndex = stack.lastIndexOf(currentInputCardSymbol!);
       actionResponse = "res-in-${lastIndex + 1}";
+      return;
+    }
+
+    // Avoid after game starts
+    if (cardUsedSoFar.isNotEmpty) {
       return;
     }
 
@@ -296,16 +325,69 @@ class GameHandler {
     // Remove predictedCard from stack
     _removeCardFromStack(predictedCard);
 
+    // Update cardsOnDesk for me
+    cardsOnDesk["me"] = predictedCard;
+
     // Set the begin suit of the current trick (begin player "me")
-    beginSuitOfCurrentTrick = _getCardSuit(predictedCard);
+    if (beginPlayerOfCurrentTrick == "me") {
+      beginSuitOfCurrentTrick = _getCardSuit(predictedCard);
+    }
 
     // Add predictedCard to cardUsedSoFar
     if (!cardUsedSoFar.contains(predictedCard)) {
       cardUsedSoFar.add(predictedCard);
     }
 
-    actionResponse = predictedCard;
+    // Set the action response
+    actionResponse = "res-out-${stack.indexOf(predictedCard) + 1}";
+
+    // Check if all players have played their cards
+    if (_deskCardCount() == 4) {
+      String result = determineCurrentTrickScores();
+      actionResponse = "$actionResponse-$result";
+    }
   }
+
+  String determineCurrentTrickScores() {
+    _addOtherPlayedCardsToCardUsedSoFar();
+
+    String res = "";
+
+    String? maxPlayer;
+    int maxMark = 0;
+
+    cardsOnDesk.forEach((player, card) {
+      if (card != null) {
+        int mark = _cardToMark(card);
+        if (mark > maxMark) {
+          maxMark = mark;
+          maxPlayer = player;
+        }
+      }
+    });
+
+    if (maxPlayer == "me" || maxPlayer == "infront") {
+      ourScore += 1;
+      res = "win";
+      debugPrint("We won the trick! Score: $ourScore, Opponent Score: $opponentScore");
+    } else {
+      opponentScore += 1;
+      res = "loss";
+      debugPrint("We lost the trick! Our Score: $ourScore, Opponent Score: $opponentScore");
+    }
+
+    // If stack card count is 0, the current round is over
+    if (_stackCardCount() == 0) {
+      res = "$res-final";
+      debugPrint("Round over! Our Score: $ourScore, Opponent Score: $opponentScore");
+    }
+
+    onScoreUpdate();
+
+    return res;
+  }
+
+  //=============================================================
 
   _removeCardFromStack(String card) {
     for (var i = 0; i < stack.length; i++) {
