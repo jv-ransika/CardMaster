@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'package:card_master/components/remote_play_status.dart';
 import 'package:card_master/handlers/conn_input_handler/bot_handler.dart';
 import 'package:card_master/handlers/conn_input_handler/image_handler.dart';
 import 'package:card_master/handlers/game_handler/game_handler.dart';
+import 'package:card_master/handlers/remote_play_handler/remote_play_handler.dart';
 import 'package:card_master/onnx/onnx_model.dart';
 import 'package:card_master/onnx/oomi_predictor.dart';
 import 'package:card_master/screens/bot/cameras_view.dart';
@@ -58,6 +60,7 @@ class _BotScreenState extends State<BotScreen> {
   late GameViewController gameViewController;
   late TestViewController testViewController;
   late LogsViewController logsViewController;
+  late RemotePlayHandler remotePlayHandler;
 
   void _initializeTabs() {
     camerasViewController = CamerasViewController(
@@ -185,6 +188,30 @@ class _BotScreenState extends State<BotScreen> {
       },
     );
 
+    // Remote Play Handler
+    remotePlayHandler = RemotePlayHandler(
+      onConnected: () {
+        setState(() {});
+        debugPrint("Connected to Remote Play");
+      },
+      onPaired: () {
+        setState(() {});
+        debugPrint("Remote Play Paired");
+      },
+      onCodeReceived: (code) {
+        setState(() {});
+        debugPrint("Remote Play Code Received: $code");
+      },
+      onPairLost: () {
+        setState(() {});
+        debugPrint("Remote Play Unpaired");
+      },
+      onDisconnected: () {
+        setState(() {});
+        debugPrint("Disconnected from Remote Play");
+      },
+    );
+
     // Image capture listeners
 
     imageInputHandlerOuter.listenToOnImageCaptured((int width, int height) async {
@@ -307,7 +334,12 @@ class _BotScreenState extends State<BotScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Card Master Bot")),
+      appBar: AppBar(
+        title: const Text("Card Master Bot"),
+        actions: [
+          RemotePlayStatusWidget(handler: remotePlayHandler), // pass your handler here
+        ],
+      ),
       body: isLoadingModels
           ? Center(
               child: Container(
