@@ -39,6 +39,7 @@ dependencies:
   onnxruntime: ^1.4.1
   image: ^4.5.4
   mobile_scanner: ^7.0.1
+  web_socket_channel: ^3.0.3
   gallery_saver_plus: ^3.2.8
   flutter_bluetooth_serial:
     path: ./packages/flutter_bluetooth_serial-0.4.0

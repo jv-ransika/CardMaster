@@ -301,7 +301,7 @@ class _CardInputSymbolWindowState extends State<CardInputSymbolWindow> {
                   ),
                   child: Center(
                     child: Text(
-                      '${(progress * 100).toStringAsFixed(0)}%',
+                      progress < 1.0 ? '${(progress * 100).toStringAsFixed(0)}%' : 'Processing...',
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
