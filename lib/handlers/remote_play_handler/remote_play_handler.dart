@@ -1,14 +1,15 @@
 import 'dart:convert';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-class RemotePlayHandler {
+class RemotePlayHandler extends ChangeNotifier {
   final String serverUrl = "ws://161.97.145.21:6969";
 
   WebSocketChannel? channel;
   String? myCode;
   bool paired = false;
+  bool connecting = false;
 
   final Function onConnected;
   final Function(String code) onCodeReceived;
@@ -18,32 +19,51 @@ class RemotePlayHandler {
 
   RemotePlayHandler({required this.onConnected, required this.onCodeReceived, required this.onPaired, required this.onPairLost, required this.onDisconnected});
 
-  void connect() {
+  void connectAndHost() {
+    if (connecting) return;
+    connecting = true;
+    notifyListeners();
+
     try {
-      channel = IOWebSocketChannel.connect(serverUrl); // emulator
-      channel!.stream.listen((message) {
-        final jsonData = jsonDecode(message.toString());
-        _handleIncomingJson(jsonData);
-      });
+      channel = IOWebSocketChannel.connect(serverUrl);
+
+      channel!.stream.listen(
+        (message) {
+          final jsonData = jsonDecode(message.toString());
+          _handleIncomingJson(jsonData);
+        },
+        onDone: () {
+          onDisconnected();
+          _resetState();
+        },
+        onError: (_) => _resetState(),
+      );
       onConnected();
+      hostGame();
     } catch (e) {
+      connecting = false;
+      notifyListeners();
       debugPrint("Error connecting to WebSocket: $e");
     }
   }
 
-  _handleIncomingJson(Map<String, dynamic> jsonData) {
+  void _handleIncomingJson(Map<String, dynamic> jsonData) {
     switch (jsonData['type']) {
       case 'host_ready':
-        myCode = jsonData['data'];
+        myCode = jsonData['code'];
+        connecting = false;
+        notifyListeners();
         onCodeReceived(myCode!);
         break;
       case 'paired':
         paired = true;
+        notifyListeners();
         onPaired();
         break;
       case 'disconnected':
         paired = false;
-        onDisconnected();
+        notifyListeners();
+        onPairLost();
         break;
       default:
         debugPrint("Unknown message type: ${jsonData['type']}");
@@ -51,20 +71,20 @@ class RemotePlayHandler {
   }
 
   void hostGame() {
-    channel!.sink.add('{"type":"host"}');
-  }
-
-  void joinGame(String code) {
-    channel!.sink.add('{"type":"join", "code":"$code"}');
-  }
-
-  void sendUpdate(String msg) {
-    channel!.sink.add('{"type":"update", "data":"$msg"}');
+    channel?.sink.add('{"type":"host"}');
   }
 
   void disconnect() {
     if (channel == null) return;
     channel!.sink.close();
+    _resetState();
     onDisconnected();
+  }
+
+  void _resetState() {
+    connecting = false;
+    myCode = null;
+    paired = false;
+    notifyListeners();
   }
 }
