@@ -90,7 +90,13 @@ class _BotScreenState extends State<BotScreen> {
 
     tabs = [
       ConnectionsView(inputHandlers: {"Outer Camera": imageInputHandlerOuter, "Inner Camera": imageInputHandlerInner, "Bot": botInputHandler}),
-      GameView(controller: gameViewController),
+      GameView(
+        controller: gameViewController,
+        onReset: () {
+          gameHandler.reset();
+          updateGameView();
+        },
+      ),
       CamerasView(controller: camerasViewController),
       TestView(controller: testViewController),
       Column(

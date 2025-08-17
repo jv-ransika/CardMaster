@@ -77,6 +77,8 @@ class GameHandler {
     afterAnalyzeActionResponse = null;
 
     cameraCaptureRequired = false;
+
+    printAllValues();
   }
 
   void printAllValues() {

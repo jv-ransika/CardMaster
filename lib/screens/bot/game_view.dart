@@ -6,8 +6,9 @@ import 'package:image/image.dart' as img;
 
 class GameView extends StatefulWidget {
   final GameViewController controller;
+  final Function onReset;
 
-  GameView({required this.controller});
+  GameView({required this.controller, required this.onReset});
 
   @override
   _GameViewState createState() => _GameViewState();
@@ -32,12 +33,14 @@ class _GameViewState extends State<GameView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Current scores
-            Text("Select Scores", style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            Text("Current Scores", style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             CurrentScores(ourScore: widget.controller.ourScore, opponentScore: widget.controller.opponentScore),
 
+            const SizedBox(height: 16),
+
             // Current trump suit
-            Text("Select Trump Suit", style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            Text("Current Trump Suit", style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
@@ -62,6 +65,33 @@ class _GameViewState extends State<GameView> {
                 border: Border.all(color: Colors.grey.shade300),
               ),
               child: CardStack(stacks: widget.controller.stack),
+            ),
+
+            // Reset button
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () async {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: Text('Confirm Reset'),
+                    content: Text('Are you sure you want to reset the game?'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text('Cancel')),
+                      TextButton(onPressed: () => Navigator.of(context).pop(true), child: Text('Reset')),
+                    ],
+                  ),
+                );
+                if (confirmed == true) {
+                  widget.onReset.call();
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Game has been reset successfully!')));
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red, // Danger button color
+                foregroundColor: Colors.white, // Text color
+              ),
+              child: Text("Reset Game"),
             ),
           ],
         ),
