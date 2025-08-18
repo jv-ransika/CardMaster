@@ -1,4 +1,5 @@
 import 'package:card_master/handlers/remote_play_handler/remote_play_handler.dart';
+import 'package:card_master/screens/play/game_view.dart';
 import 'package:flutter/material.dart';
 
 class PlayScreen extends StatefulWidget {
@@ -54,36 +55,74 @@ class _PlayScreenState extends State<PlayScreen> {
   Widget build(BuildContext context) {
     Widget body;
 
-    if (!remotePlayHandler.connecting && remotePlayHandler.channel == null) {
-      body = const _StatusView(title: "Disconnected", subtitle: "Please try again", showLoader: false);
-    } else if (remotePlayHandler.connecting) {
-      body = const _StatusView(title: "Connecting to server...", subtitle: "Please wait", showLoader: true);
-    } else if (!remotePlayHandler.paired && !joining) {
-      body = _CodeInputView(
-        controller: _codeController,
-        onPairPressed: () {
-          final code = _codeController.text.trim();
-          if (code.length != 6) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Enter a valid 6-digit code")));
-            return;
-          }
-          setState(() => joining = true);
-          remotePlayHandler.joinGame(code);
-        },
-      );
-    } else if (joining && !remotePlayHandler.paired) {
-      body = const _StatusView(title: "Pairing with host...", subtitle: "Please wait", showLoader: true);
-    } else if (remotePlayHandler.paired) {
-      body = const Center(
-        child: Text("Implement here...", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-      );
-    } else {
-      body = const _StatusView(title: "Disconnected", subtitle: "Please try again", showLoader: false);
-    }
+    // if (!remotePlayHandler.connecting && remotePlayHandler.channel == null) {
+    //   body = const _StatusView(title: "Disconnected", subtitle: "Please try again", showLoader: false);
+    // } else if (remotePlayHandler.connecting) {
+    //   body = const _StatusView(title: "Connecting to server...", subtitle: "Please wait", showLoader: true);
+    // } else if (!remotePlayHandler.paired && !joining) {
+    //   body = _CodeInputView(
+    //     controller: _codeController,
+    //     onPairPressed: () {
+    //       final code = _codeController.text.trim();
+    //       if (code.length != 6) {
+    //         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Enter a valid 6-digit code")));
+    //         return;
+    //       }
+    //       setState(() => joining = true);
+    //       remotePlayHandler.joinGame(code);
+    //     },
+    //   );
+    // } else if (joining && !remotePlayHandler.paired) {
+    //   body = const _StatusView(title: "Pairing with host...", subtitle: "Please wait", showLoader: true);
+    // } else if (remotePlayHandler.paired) {
+    //   body = const Center(
+    //     child: Text("Implement here...", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+    //   );
+    // } else {
+    //   body = const _StatusView(title: "Disconnected", subtitle: "Please try again", showLoader: false);
+    // }
 
-    return Scaffold(
-      appBar: AppBar(title: const Text("Play Screen")),
-      body: AnimatedSwitcher(duration: const Duration(milliseconds: 300), child: body),
+    body = GameView(
+      cardsOnHand: ["7D", null, null, null, null, null, null, null],
+      cardsOnDesk: {"me": "5H", "infront": "9C", "left": "3D", "right": "7S"},
+      trumpSuit: "H",
+      ourScore: 2,
+      opponentScore: 3,
+      currentState: "Your Turn",
+      roundOver: false,
+      specialGameStates: ["Your Turn"],
+      onCardClick: (card) {
+        debugPrint("Card clicked: $card");
+      },
+    );
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+
+        // Show confirmation dialog
+        final shouldExit = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text("Exit Game"),
+            content: const Text("Are you sure you want to leave the game?"),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text("Cancel")),
+              TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text("Yes")),
+            ],
+          ),
+        );
+
+        if (shouldExit == true) {
+          Navigator.of(context).pop(result);
+        }
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: AnimatedSwitcher(duration: const Duration(milliseconds: 300), child: body),
+        ),
+      ),
     );
   }
 }
