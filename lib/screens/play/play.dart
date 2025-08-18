@@ -63,47 +63,58 @@ class _PlayScreenState extends State<PlayScreen> {
   Widget build(BuildContext context) {
     Widget body;
 
-    // if (!remotePlayHandler.connecting && remotePlayHandler.channel == null) {
-    //   body = const _StatusView(title: "Disconnected", subtitle: "Please try again", showLoader: false);
-    // } else if (remotePlayHandler.connecting) {
-    //   body = const _StatusView(title: "Connecting to server...", subtitle: "Please wait", showLoader: true);
-    // } else if (!remotePlayHandler.paired && !joining) {
-    //   body = _CodeInputView(
-    //     controller: _codeController,
-    //     onPairPressed: () {
-    //       final code = _codeController.text.trim();
-    //       if (code.length != 6) {
-    //         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Enter a valid 6-digit code")));
-    //         return;
-    //       }
-    //       setState(() => joining = true);
-    //       remotePlayHandler.joinGame(code);
-    //     },
-    //   );
-    // } else if (joining && !remotePlayHandler.paired) {
-    //   body = const _StatusView(title: "Pairing with host...", subtitle: "Please wait", showLoader: true);
-    // } else if (remotePlayHandler.paired) {
-    //   body = const Center(
-    //     child: Text("Implement here...", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-    //   );
-    // } else {
-    //   body = const _StatusView(title: "Disconnected", subtitle: "Please try again", showLoader: false);
-    // }
+    if (!remotePlayHandler.connecting && remotePlayHandler.channel == null) {
+      body = const _StatusView(title: "Disconnected", subtitle: "Please try again", showLoader: false);
+    } else if (remotePlayHandler.connecting) {
+      body = const _StatusView(title: "Connecting to server...", subtitle: "Please wait", showLoader: true);
+    } else if (!remotePlayHandler.paired && !joining) {
+      body = _CodeInputView(
+        controller: _codeController,
+        onPairPressed: () {
+          final code = _codeController.text.trim();
+          if (code.length != 6) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Enter a valid 6-digit code")));
+            return;
+          }
+          setState(() => joining = true);
+          remotePlayHandler.joinGame(code);
+        },
+      );
+    } else if (joining && !remotePlayHandler.paired) {
+      body = const _StatusView(title: "Pairing with host...", subtitle: "Please wait", showLoader: true);
+    } else if (remotePlayHandler.paired) {
+      body = GameView(
+        cardsOnHand: _gameState.cardsOnHand,
+        cardsOnDesk: _gameState.cardsOnDesk,
+        trumpSuit: _gameState.trumpSuit,
+        ourScore: _gameState.ourScore,
+        opponentScore: _gameState.opponentScore,
+        currentState: _gameState.currentState,
+        roundOver: _gameState.roundOver,
+        specialGameStates: ["Your Turn"],
+        onCardClick: (card) {
+          if (_gameState.currentState != "Your Turn") return;
+          remotePlayHandler.sendMessage(jsonEncode({"type": "selected_card", "data": card}));
+        },
+      );
+    } else {
+      body = const _StatusView(title: "Disconnected", subtitle: "Please try again", showLoader: false);
+    }
 
-    body = GameView(
-      cardsOnHand: ["7D", null, null, null, null, null, null, null],
-      cardsOnDesk: {"me": "5H", "infront": "9C", "left": "3D", "right": "7S"},
-      trumpSuit: "C",
-      ourScore: 2,
-      opponentScore: 3,
-      currentState: "Your Turn",
-      roundOver: false,
-      specialGameStates: ["Your Turn"],
-      onCardClick: (card) {
-        if (_gameState.currentState != "Your Turn") return;
-        remotePlayHandler.sendMessage(jsonEncode({"type": "selected_card", "data": card}));
-      },
-    );
+    // body = GameView(
+    //   cardsOnHand: ["7D", null, null, null, null, null, null, null],
+    //   cardsOnDesk: {"me": "5H", "infront": "9C", "left": "3D", "right": "7S"},
+    //   trumpSuit: "C",
+    //   ourScore: 2,
+    //   opponentScore: 3,
+    //   currentState: "Your Turn",
+    //   roundOver: false,
+    //   specialGameStates: ["Your Turn"],
+    //   onCardClick: (card) {
+    //     if (_gameState.currentState != "Your Turn") return;
+    //     remotePlayHandler.sendMessage(jsonEncode({"type": "selected_card", "data": card}));
+    //   },
+    // );
 
     return PopScope(
       canPop: false,
