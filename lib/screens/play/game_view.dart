@@ -137,7 +137,7 @@ class CurrentTrump extends StatelessWidget {
   const CurrentTrump({Key? key, this.trumpSuit, this.size = 56.0}) : super(key: key);
 
   static const Map<String, String> suitSymbols = {'H': '♥', 'D': '♦', 'C': '♣', 'S': '♠'};
-  static const Map<String, Color> suitColors = {'H': Colors.yellow, 'D': Colors.red, 'C': Colors.black, 'S': Colors.black};
+  static const Map<String, Color> suitColors = {'H': Colors.yellow, 'D': Colors.yellow, 'C': Colors.yellow, 'S': Colors.yellow};
 
   @override
   Widget build(BuildContext context) {

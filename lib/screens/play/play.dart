@@ -93,7 +93,7 @@ class _PlayScreenState extends State<PlayScreen> {
     body = GameView(
       cardsOnHand: ["7D", null, null, null, null, null, null, null],
       cardsOnDesk: {"me": "5H", "infront": "9C", "left": "3D", "right": "7S"},
-      trumpSuit: "H",
+      trumpSuit: "C",
       ourScore: 2,
       opponentScore: 3,
       currentState: "Your Turn",
