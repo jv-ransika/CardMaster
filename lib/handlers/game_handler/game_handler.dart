@@ -525,7 +525,8 @@ class GameHandler {
     return stack.where((card) => card != null).length;
   }
 
-  void _setLocalBoardCenter(Map<String, Offset> centers) {
+  void calcLocalBoardCenter(List<YOLODetection> detections) {
+    final centers = _calcDistinctClassCenters(detections);
     boardCenter = Offset(centers.values.map((e) => e.dx).reduce((a, b) => a + b) / centers.length, centers.values.map((e) => e.dy).reduce((a, b) => a + b) / centers.length);
   }
 
