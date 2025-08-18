@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -14,18 +15,20 @@ class RemotePlayHandler extends ChangeNotifier {
   final Function onConnected;
   final Function(String code) onCodeReceived;
   final Function onPaired;
+  final Function(String message) onMessageReceived;
   final Function onPairLost;
+  final Function(String msg) onErrorReceived;
   final Function onDisconnected;
 
-  RemotePlayHandler({required this.onConnected, required this.onCodeReceived, required this.onPaired, required this.onPairLost, required this.onDisconnected});
+  RemotePlayHandler({required this.onConnected, required this.onCodeReceived, required this.onPaired, required this.onPairLost, required this.onDisconnected, required this.onErrorReceived, required this.onMessageReceived});
 
-  void connectAndHost() {
+  void connectAndHost() async {
     if (connecting) return;
     connecting = true;
     notifyListeners();
 
     try {
-      channel = IOWebSocketChannel.connect(serverUrl);
+      channel = IOWebSocketChannel(await WebSocket.connect(serverUrl));
 
       channel!.stream.listen(
         (message) {
@@ -36,13 +39,17 @@ class RemotePlayHandler extends ChangeNotifier {
           onDisconnected();
           _resetState();
         },
-        onError: (_) => _resetState(),
+        onError: (_) {
+          _resetState();
+          onDisconnected();
+        },
+        cancelOnError: true,
       );
       onConnected();
       hostGame();
     } catch (e) {
-      connecting = false;
-      notifyListeners();
+      _resetState();
+      onDisconnected();
       debugPrint("Error connecting to WebSocket: $e");
     }
   }
@@ -60,6 +67,16 @@ class RemotePlayHandler extends ChangeNotifier {
         notifyListeners();
         onPaired();
         break;
+      case 'message':
+        final message = jsonData['text'];
+        notifyListeners();
+        onMessageReceived(message);
+        break;
+      case 'error':
+        final errorMsg = jsonData['message'];
+        notifyListeners();
+        onErrorReceived(errorMsg);
+        break;
       case 'disconnected':
         paired = false;
         notifyListeners();
@@ -72,6 +89,14 @@ class RemotePlayHandler extends ChangeNotifier {
 
   void hostGame() {
     channel?.sink.add('{"type":"host"}');
+  }
+
+  void joinGame(String code) {
+    channel?.sink.add('{"type":"join", "code":"$code"}');
+  }
+
+  void sendMessage(String msg) {
+    channel?.sink.add('{"type":"message", "text":"$msg"}');
   }
 
   void disconnect() {
