@@ -100,7 +100,8 @@ class _PlayScreenState extends State<PlayScreen> {
       roundOver: false,
       specialGameStates: ["Your Turn"],
       onCardClick: (card) {
-        debugPrint("Card clicked: $card");
+        if (_gameState.currentState != "Your Turn") return;
+        remotePlayHandler.sendMessage(jsonEncode({"type": "selected_card", "data": card}));
       },
     );
 

@@ -39,23 +39,23 @@ class GameView extends StatelessWidget {
                     child: OmiBoard(me: cardsOnDesk["me"], infront: cardsOnDesk["infront"], left: cardsOnDesk["left"], right: cardsOnDesk["right"]),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
 
                 // Scores
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    ScoreCard(label: 'You', score: ourScore),
+                    ScoreCard(label: 'Us', score: ourScore),
                     const SizedBox(width: 24),
-                    ScoreCard(label: 'Opponent', score: opponentScore),
+                    ScoreCard(label: 'Opp', score: opponentScore),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
 
                 // Current Game State
                 if (currentState != null) SpecialStateText(text: currentState!, isSpecial: isSpecialState),
 
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
 
                 // Cards On Hand
                 SizedBox(
