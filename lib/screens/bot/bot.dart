@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:card_master/components/remote_play_status.dart';
 import 'package:card_master/handlers/conn_input_handler/bot_handler.dart';
 import 'package:card_master/handlers/conn_input_handler/image_handler.dart';
@@ -62,6 +63,9 @@ class _BotScreenState extends State<BotScreen> {
   late LogsViewController logsViewController;
   late RemotePlayHandler remotePlayHandler;
 
+  Completer<String>? _remoteResponseCompleter;
+  bool remoteMode = false;
+
   void _initializeTabs() {
     camerasViewController = CamerasViewController(
       onNeedUpdateOuterImage: () {
@@ -120,25 +124,43 @@ class _BotScreenState extends State<BotScreen> {
     }
   }
 
-  void drawBoundaryBoxes(List<YOLODetection> detections, img.Image image) {
-    for (var detection in detections) {
-      print("${detection.className} - ${detection.confidence} - ${detection.boxX}, ${detection.boxY}, ${detection.boxWidth}, ${detection.boxHeight}");
-      // Convert center-based coords to corner-based
-      final x1 = (detection.boxX - detection.boxWidth / 2).toInt();
-      final y1 = (detection.boxY - detection.boxHeight / 2).toInt();
-      final x2 = (detection.boxX + detection.boxWidth / 2).toInt();
-      final y2 = (detection.boxY + detection.boxHeight / 2).toInt();
-
-      img.drawRect(image, x1: x1, y1: y1, x2: x2, y2: y2, color: img.ColorRgb8(0, 255, 0), thickness: 2);
-    }
-  }
-
   Future<void> detectCurrentImage() async {
     try {
       await yoloDetector.detectObjects(_currentImage!, yoloModel);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("YOLO detection completed.")));
     } catch (e) {
       print('Error during YOLO detection: $e');
+    }
+  }
+
+  //=================
+
+  void _updateRemote(String currentState) {
+    if (!remoteMode) return;
+    debugPrint("Updating remote with current state: $currentState");
+
+    // Build json
+    Map<String, dynamic> jsonData = {
+      'type': 'game_state',
+      'data': {'trumpSuit': gameHandler.trumpSuit, 'cardsOnHand': gameHandler.stack, 'cardsOnDesk': gameHandler.cardsOnDesk, 'ourScore': gameHandler.ourScore, 'opponentScore': gameHandler.opponentScore, 'roundOver': gameHandler.currentState == GameState.roundOver, 'currentState': currentState},
+    };
+
+    remotePlayHandler.sendMessage(jsonEncode(jsonData));
+  }
+
+  void _handleRemoteMessage(String message) {
+    final json = jsonDecode(message);
+
+    String? result;
+
+    if (json['type'] == 'selected_card') {
+      result = json['data'];
+      debugPrint("Remote player selected card: $result");
+    }
+
+    if (result != null && _remoteResponseCompleter != null) {
+      _remoteResponseCompleter!.complete(result);
+      _remoteResponseCompleter = null;
     }
   }
 
@@ -170,12 +192,19 @@ class _BotScreenState extends State<BotScreen> {
 
     // GameHandler
     gameHandler = GameHandler(
+      onGameStarted: () {
+        debugPrint("Game Started");
+        _updateRemote("Game Started");
+        updateGameView();
+      },
       onSayTrumpSuit: () {
         debugPrint("Trump Suit: ${gameHandler.trumpSuit}");
+        _updateRemote("Trump Suit Updated");
         updateGameView();
       },
       onScoreUpdate: () {
         debugPrint("Score Updated");
+        _updateRemote("Score Updated");
         updateGameView();
       },
       onActionResponse: (String response) {
@@ -183,14 +212,28 @@ class _BotScreenState extends State<BotScreen> {
         botInputHandler.sendString(response);
       },
       onGetPredictedCard: (Int64List trumpSuitData, Int64List handData, Int64List deskData, Int64List playedData, List<bool> validActionsData) async {
-        debugPrint("Getting predicted card...");
-        return await oomiPredictor.predict(trumpSuitData, handData, deskData, playedData, validActionsData, oomiModel);
+        if (!remoteMode) {
+          debugPrint("Getting predicted card...");
+          return await oomiPredictor.predict(trumpSuitData, handData, deskData, playedData, validActionsData, oomiModel);
+        } else {
+          debugPrint("Requesting card from remote player...");
+          _remoteResponseCompleter = Completer<String>();
+          _updateRemote("Your Turn");
+          String card = await _remoteResponseCompleter!.future;
+          return gameHandler.getCardIndex(card);
+        }
+      },
+      onRoundOver: () {
+        debugPrint("Round Over");
+        _updateRemote("Round Over");
+        updateGameView();
       },
     );
 
     // Remote Play Handler
     remotePlayHandler = RemotePlayHandler(
       onConnected: () {
+        remoteMode = true;
         setState(() {});
         debugPrint("Connected to Remote Play");
       },
@@ -203,6 +246,7 @@ class _BotScreenState extends State<BotScreen> {
         debugPrint("Remote Play Paired");
       },
       onMessageReceived: (message) {
+        _handleRemoteMessage(message);
         setState(() {});
         debugPrint("Remote Play Message Received: $message");
       },
@@ -215,6 +259,7 @@ class _BotScreenState extends State<BotScreen> {
         debugPrint("Remote Play Error: $msg");
       },
       onDisconnected: () {
+        remoteMode = false;
         setState(() {});
         debugPrint("Disconnected from Remote Play");
       },
@@ -238,7 +283,7 @@ class _BotScreenState extends State<BotScreen> {
 
     imageInputHandlerInner.listenToOnImageCaptured((int width, int height) async {
       debugPrint("Inner Image Captured: Width: $width, Height: $height");
-      //==== pad image to 800x800 (240x240 is received, to more accuracy we do this)
+      //==== pad image to 1200x1200 (240x240 is received, to more accuracy we do this)
       final originalImage = imageInputHandlerInner.image!;
       _currentImage = img.copyExpandCanvas(originalImage, newWidth: 1200, newHeight: 1200, backgroundColor: img.ColorRgb8(255, 255, 255));
       //============================================================================
@@ -343,7 +388,7 @@ class _BotScreenState extends State<BotScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Card Master Bot"),
+        title: const Text("Card Master"),
         actions: [
           RemotePlayStatusWidget(handler: remotePlayHandler), // pass your handler here
         ],
@@ -355,7 +400,28 @@ class _BotScreenState extends State<BotScreen> {
                 child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [CircularProgressIndicator(), SizedBox(width: 20), Text("Loading Models...")]),
               ),
             )
-          : IndexedStack(index: tabIndex, children: tabs),
+          : Column(
+              children: [
+                Container(
+                  color: remoteMode ? Colors.yellow : Colors.green,
+                  padding: const EdgeInsets.all(4.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(remoteMode ? Icons.info : Icons.smart_toy, color: Colors.black, size: 16),
+                      SizedBox(width: 8),
+                      Text(
+                        remoteMode ? "Remote Mode Enabled" : "AI Mode Enabled",
+                        style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: IndexedStack(index: tabIndex, children: tabs),
+                ),
+              ],
+            ),
       bottomNavigationBar: BottomNavigationBar(
         selectedItemColor: Colors.blue,
         unselectedItemColor: Colors.grey[400],
