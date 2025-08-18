@@ -223,7 +223,6 @@ class _GameState {
 
   void handleMessage(String message) {
     final json = jsonDecode(message);
-
     if (json['type'] == 'game_state') {
       _updateGameState(json['data']);
     }
