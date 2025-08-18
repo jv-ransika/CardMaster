@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:card_master/handlers/remote_play_handler/remote_play_handler.dart';
 import 'package:card_master/screens/play/game_view.dart';
 import 'package:flutter/material.dart';
@@ -14,6 +16,8 @@ class _PlayScreenState extends State<PlayScreen> {
   final TextEditingController _codeController = TextEditingController();
   bool joining = false; // waiting for host confirmation
 
+  final _GameState _gameState = _GameState();
+
   @override
   void initState() {
     super.initState();
@@ -26,7 +30,11 @@ class _PlayScreenState extends State<PlayScreen> {
         });
         debugPrint("Remote Play Paired");
       },
-      onMessageReceived: (message) => debugPrint("Remote Play Message: $message"),
+      onMessageReceived: (message) {
+        debugPrint("Remote Play Message: $message");
+        _gameState.handleMessage(message);
+        setState(() {});
+      },
       onPairLost: () => setState(() {}),
       onErrorReceived: (msg) {
         setState(() {
@@ -201,5 +209,51 @@ class _CodeInputView extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _GameState {
+  List<String?> cardsOnHand = [null, null, null, null, null, null, null, null];
+  Map<String, String?> cardsOnDesk = {"me": null, "infront": null, "left": null, "right": null};
+  String? trumpSuit;
+  int ourScore = 0;
+  int opponentScore = 0;
+  String currentState = "Waiting";
+  bool roundOver = false;
+
+  void handleMessage(String message) {
+    final json = jsonDecode(message);
+
+    if (json['type'] == 'game_state') {
+      _updateGameState(json['data']);
+    }
+  }
+
+  void _updateGameState(Map<String, dynamic> data) {
+    for (MapEntry<String, dynamic> entry in data.entries) {
+      switch (entry.key) {
+        case 'cardsOnHand':
+          cardsOnHand = List<String?>.from(entry.value);
+          break;
+        case 'cardsOnDesk':
+          cardsOnDesk = Map<String, String?>.from(entry.value);
+          break;
+        case 'trumpSuit':
+          trumpSuit = entry.value;
+          break;
+        case 'ourScore':
+          ourScore = entry.value;
+          break;
+        case 'opponentScore':
+          opponentScore = entry.value;
+          break;
+        case 'currentState':
+          currentState = entry.value;
+          break;
+        case 'roundOver':
+          roundOver = entry.value;
+          break;
+      }
+    }
   }
 }
