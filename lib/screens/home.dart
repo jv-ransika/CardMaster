@@ -41,8 +41,8 @@ class _HomeScreenState extends State<HomeScreen> {
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                // Navigator.push(context, MaterialPageRoute(builder: (context) => PlayScreen()));
-                Navigator.push(context, MaterialPageRoute(builder: (context) => QRScanScreen()));
+                Navigator.push(context, MaterialPageRoute(builder: (context) => PlayScreen()));
+                // Navigator.push(context, MaterialPageRoute(builder: (context) => QRScanScreen()));
               },
               child: Text('Play Remote'),
             ),

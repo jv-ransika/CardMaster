@@ -194,17 +194,25 @@ class _BotScreenState extends State<BotScreen> {
         setState(() {});
         debugPrint("Connected to Remote Play");
       },
-      onPaired: () {
-        setState(() {});
-        debugPrint("Remote Play Paired");
-      },
       onCodeReceived: (code) {
         setState(() {});
         debugPrint("Remote Play Code Received: $code");
       },
+      onPaired: () {
+        setState(() {});
+        debugPrint("Remote Play Paired");
+      },
+      onMessageReceived: (message) {
+        setState(() {});
+        debugPrint("Remote Play Message Received: $message");
+      },
       onPairLost: () {
         setState(() {});
         debugPrint("Remote Play Unpaired");
+      },
+      onErrorReceived: (msg) {
+        setState(() {});
+        debugPrint("Remote Play Error: $msg");
       },
       onDisconnected: () {
         setState(() {});
