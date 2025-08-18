@@ -323,7 +323,7 @@ class _BotScreenState extends State<BotScreen> {
 
       switch (line) {
         //======================================
-        case "cmd-getCard":
+        case "cmd-cardAv":
           gameHandler.triggerBotAction(BotAction.btnInPressed);
           if (gameHandler.cameraCaptureRequired) {
             imageInputHandlerInner.captureImage();

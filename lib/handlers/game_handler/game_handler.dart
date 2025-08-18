@@ -46,6 +46,8 @@ class GameHandler {
 
   bool cameraCaptureRequired = false;
 
+  Offset boardCenter = Offset(320, 320);
+
   final Function onGameStarted;
   final Function onRoundOver;
   final Function onSayTrumpSuit;
@@ -142,7 +144,7 @@ class GameHandler {
               debugPrint("After Analyze Action Response: Round Over");
               onRoundOver();
               currentState = GameState.roundOver;
-              actionResponse = "$actionResponse-over";
+              actionResponse = "$actionResponse-${getFinalRoundScores()}";
             }
 
             callbackActionResponse();
@@ -176,8 +178,8 @@ class GameHandler {
     isValid = true;
 
     // Get board center
-    double boardCenterX = imgWidth / 2;
-    double boardCenterY = imgHeight / 2;
+    double boardCenterX = boardCenter.dx;
+    double boardCenterY = boardCenter.dy;
 
     // Map cards to direction based on position relative to board center
     for (var entry in centers.entries) {
@@ -359,6 +361,12 @@ class GameHandler {
     return trumpSuit;
   }
 
+  String getFinalRoundScores() {
+    if (ourScore > opponentScore) return "w";
+    if (ourScore < opponentScore) return "l";
+    return "d";
+  }
+
   String getCurrentTrickScores() {
     _addOtherPlayedCardsToCardUsedSoFar();
 
@@ -387,18 +395,18 @@ class GameHandler {
     // Decide result
     if (winners.length > 1) {
       // Draw case
-      res = "draw";
+      res = "d";
       debugPrint("Trick is a draw! Players: $winners");
     } else {
       String maxPlayer = winners.first;
 
       if (maxPlayer == "me" || maxPlayer == "infront") {
         ourScore += 1;
-        res = "win";
+        res = "w";
         debugPrint("We won the trick! Score: $ourScore, Opponent Score: $opponentScore");
       } else {
         opponentScore += 1;
-        res = "loss";
+        res = "l";
         debugPrint("We lost the trick! Our Score: $ourScore, Opponent Score: $opponentScore");
       }
     }
@@ -515,6 +523,10 @@ class GameHandler {
 
   int stackCardCount() {
     return stack.where((card) => card != null).length;
+  }
+
+  void _setLocalBoardCenter(Map<String, Offset> centers) {
+    boardCenter = Offset(centers.values.map((e) => e.dx).reduce((a, b) => a + b) / centers.length, centers.values.map((e) => e.dy).reduce((a, b) => a + b) / centers.length);
   }
 
   Map<String, Offset> _calcDistinctClassCenters(List<YOLODetection> detections) {
