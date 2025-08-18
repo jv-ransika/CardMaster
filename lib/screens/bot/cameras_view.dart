@@ -31,7 +31,7 @@ class _CamerasViewState extends State<CamerasView> {
         children: [
           const SizedBox(height: 8),
 
-          buildCameraSection(
+          buildOuterCameraSection(
             title: "Outer Camera",
             onUpdatePressed: widget.controller.callNeedUpdateOuterImage,
             isUpdating: widget.controller.progressOuterImage > 0,
@@ -40,7 +40,7 @@ class _CamerasViewState extends State<CamerasView> {
 
           const SizedBox(height: 16),
 
-          buildCameraSection(
+          buildInnerCameraSection(
             title: "Inner Camera",
             onUpdatePressed: widget.controller.callNeedUpdateInnerImage,
             isUpdating: widget.controller.progressInnerImage > 0,
@@ -53,7 +53,59 @@ class _CamerasViewState extends State<CamerasView> {
     );
   }
 
-  Widget buildCameraSection({required String title, required VoidCallback onUpdatePressed, required bool isUpdating, required Widget content}) {
+  Widget buildOuterCameraSection({required String title, required VoidCallback onUpdatePressed, required bool isUpdating, required Widget content}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+      child: Container(
+        padding: const EdgeInsets.all(8.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: Colors.grey.shade400, width: 1.0),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), spreadRadius: 2, blurRadius: 4, offset: const Offset(0, 2))],
+          borderRadius: BorderRadius.circular(8.0),
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+              child: Row(
+                children: [
+                  Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  ElevatedButton(
+                    onPressed: isUpdating ? null : onUpdatePressed,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      textStyle: const TextStyle(fontSize: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                    ),
+                    child: const Text("Update"),
+                  ),
+                  const SizedBox(width: 4),
+                ],
+              ),
+            ),
+            content,
+            const SizedBox(height: 8),
+            ElevatedButton(
+              onPressed: () {
+                // Add your calibration logic here
+                print("Calibrate Center button pressed");
+              },
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                textStyle: const TextStyle(fontSize: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+              ),
+              child: const Text("Calibrate Center"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget buildInnerCameraSection({required String title, required VoidCallback onUpdatePressed, required bool isUpdating, required Widget content}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
       child: Container(
@@ -96,6 +148,7 @@ class _CamerasViewState extends State<CamerasView> {
 class CamerasViewController {
   final Function onNeedUpdateOuterImage;
   final Function onNeedUpdateInnerImage;
+  final Function onCalibrateCenterClick;
 
   img.Image? outerImage;
   img.Image? innerImage;
@@ -107,7 +160,7 @@ class CamerasViewController {
 
   Function? onUpdate;
 
-  CamerasViewController({required this.onNeedUpdateOuterImage, required this.onNeedUpdateInnerImage});
+  CamerasViewController({required this.onNeedUpdateOuterImage, required this.onNeedUpdateInnerImage, required this.onCalibrateCenterClick});
 
   void callNeedUpdateOuterImage() {
     onNeedUpdateOuterImage.call();

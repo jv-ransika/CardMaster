@@ -73,7 +73,20 @@ class _BotScreenState extends State<BotScreen> {
       },
       onNeedUpdateInnerImage: () async {
         imageInputHandlerInner.captureImage();
-        // await oomiPredictor.predict(oomiModel);
+      },
+      onCalibrateCenterClick: () {
+        if (yoloDetector.detections == null || yoloDetector.detections!.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("No detections available to calibrate center.")));
+          return;
+        }
+        // Calculate the center of the detected cards
+        gameHandler.calcLocalBoardCenter(yoloDetector.detections!);
+        // Draw calibration markers on the image
+        if (yoloDetector.processedImage != null) {
+          img.drawCircle(yoloDetector.processedImage!, x: gameHandler.boardCenter.dx.toInt(), y: gameHandler.boardCenter.dy.toInt(), radius: 10, color: img.ColorRgb8(255, 0, 0));
+          camerasViewController.outerImage = yoloDetector.processedImage!;
+          camerasViewController.update();
+        }
       },
     );
 
