@@ -22,7 +22,7 @@ class RemotePlayHandler extends ChangeNotifier {
 
   RemotePlayHandler({required this.onConnected, required this.onCodeReceived, required this.onPaired, required this.onPairLost, required this.onDisconnected, required this.onErrorReceived, required this.onMessageReceived});
 
-  void connectAndHost() async {
+  void connectAndHost({bool host = false}) async {
     if (connecting) return;
     connecting = true;
     notifyListeners();
@@ -45,8 +45,14 @@ class RemotePlayHandler extends ChangeNotifier {
         },
         cancelOnError: true,
       );
+
+      connecting = false;
+      notifyListeners();
       onConnected();
-      hostGame();
+
+      if (host) {
+        hostGame();
+      }
     } catch (e) {
       _resetState();
       onDisconnected();
@@ -78,8 +84,7 @@ class RemotePlayHandler extends ChangeNotifier {
         onErrorReceived(errorMsg);
         break;
       case 'disconnected':
-        paired = false;
-        notifyListeners();
+        disconnect();
         onPairLost();
         break;
       default:
@@ -110,6 +115,7 @@ class RemotePlayHandler extends ChangeNotifier {
     connecting = false;
     myCode = null;
     paired = false;
+    channel = null;
     notifyListeners();
   }
 }
