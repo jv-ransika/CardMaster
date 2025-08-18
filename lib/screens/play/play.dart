@@ -10,47 +10,43 @@ class PlayScreen extends StatefulWidget {
 
 class _PlayScreenState extends State<PlayScreen> {
   late RemotePlayHandler remotePlayHandler;
+  final TextEditingController _codeController = TextEditingController();
+  bool joining = false; // waiting for host confirmation
 
   @override
   void initState() {
     super.initState();
     remotePlayHandler = RemotePlayHandler(
-      onConnected: () {
-        setState(() {});
-        debugPrint("Connected to Remote Play");
-      },
-      onCodeReceived: (code) {
-        setState(() {});
-        debugPrint("Remote Play Code Received: $code");
-      },
+      onConnected: () => setState(() {}),
+      onCodeReceived: (_) {}, // not needed on client
       onPaired: () {
-        setState(() {});
+        setState(() {
+          joining = false;
+        });
         debugPrint("Remote Play Paired");
       },
-      onMessageReceived: (message) {
-        debugPrint("Remote Play Message Received: $message");
-      },
-      onPairLost: () {
-        setState(() {});
-        debugPrint("Remote Play Unpaired");
-      },
+      onMessageReceived: (message) => debugPrint("Remote Play Message: $message"),
+      onPairLost: () => setState(() {}),
       onErrorReceived: (msg) {
-        setState(() {});
-        debugPrint("Remote Play Error: $msg");
+        setState(() {
+          joining = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       },
       onDisconnected: () {
-        setState(() {});
-        debugPrint("Disconnected from Remote Play");
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() {});
+        });
       },
     );
 
-    // connect immediately when screen opens
-    remotePlayHandler.connectAndHost();
+    remotePlayHandler.connectAndHost(); // connect to server
   }
 
   @override
   void dispose() {
     remotePlayHandler.disconnect();
+    _codeController.dispose();
     super.dispose();
   }
 
@@ -58,24 +54,35 @@ class _PlayScreenState extends State<PlayScreen> {
   Widget build(BuildContext context) {
     Widget body;
 
-    if (remotePlayHandler.connecting) {
-      // loading while connecting
-      body = const _StatusView(title: "Connecting...", subtitle: "Please wait while we connect you to the server", showLoader: true);
-    } else if (remotePlayHandler.myCode != null && !remotePlayHandler.paired) {
-      // show the 6-digit code
-      body = _CodeView(code: remotePlayHandler.myCode!);
+    if (!remotePlayHandler.connecting && remotePlayHandler.channel == null) {
+      body = const _StatusView(title: "Disconnected", subtitle: "Please try again", showLoader: false);
+    } else if (remotePlayHandler.connecting) {
+      body = const _StatusView(title: "Connecting to server...", subtitle: "Please wait", showLoader: true);
+    } else if (!remotePlayHandler.paired && !joining) {
+      body = _CodeInputView(
+        controller: _codeController,
+        onPairPressed: () {
+          final code = _codeController.text.trim();
+          if (code.length != 6) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Enter a valid 6-digit code")));
+            return;
+          }
+          setState(() => joining = true);
+          remotePlayHandler.joinGame(code);
+        },
+      );
+    } else if (joining && !remotePlayHandler.paired) {
+      body = const _StatusView(title: "Pairing with host...", subtitle: "Please wait", showLoader: true);
     } else if (remotePlayHandler.paired) {
-      // show paired screen
       body = const Center(
         child: Text("Implement here...", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
       );
     } else {
-      // fallback
       body = const _StatusView(title: "Disconnected", subtitle: "Please try again", showLoader: false);
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Play Screen')),
+      appBar: AppBar(title: const Text("Play Screen")),
       body: AnimatedSwitcher(duration: const Duration(milliseconds: 300), child: body),
     );
   }
@@ -117,28 +124,42 @@ class _StatusView extends StatelessWidget {
   }
 }
 
-/// View for showing 6-digit code
-class _CodeView extends StatelessWidget {
-  final String code;
+/// Input for host code
+class _CodeInputView extends StatelessWidget {
+  final TextEditingController controller;
+  final VoidCallback onPairPressed;
 
-  const _CodeView({required this.code});
+  const _CodeInputView({required this.controller, required this.onPairPressed});
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text("Share this code with your friend", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: Colors.blue.shade50),
-            child: Text(code, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, letterSpacing: 6)),
-          ),
-          const SizedBox(height: 20),
-          const _StatusView(title: "Waiting for opponent...", subtitle: "Tell your friend to enter the above code", showLoader: true),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text("Enter Game Code", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            TextField(
+              controller: controller,
+              maxLength: 6,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(border: OutlineInputBorder(), hintText: "6-digit code", counterText: ""),
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 24, letterSpacing: 6),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: onPairPressed,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text("Play", style: TextStyle(fontSize: 18)),
+            ),
+          ],
+        ),
       ),
     );
   }
