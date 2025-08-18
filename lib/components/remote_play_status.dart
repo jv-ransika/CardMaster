@@ -9,7 +9,7 @@ class RemotePlayStatusWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      icon: Icon(Icons.wifi, color: handler.myCode != null ? Colors.blue : Colors.grey),
+      icon: Icon(Icons.wifi, color: handler.myCode != null ? (handler.paired ? Colors.green : Colors.blue) : Colors.grey),
       onPressed: () {
         showModalBottomSheet(
           context: context,
@@ -45,7 +45,7 @@ class RemotePlayStatusWidget extends StatelessWidget {
                         ElevatedButton.icon(
                           icon: const Icon(Icons.link),
                           label: const Text("Connect & Host"),
-                          onPressed: handler.connectAndHost,
+                          onPressed: () => handler.connectAndHost(host: true),
                           style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(45)),
                         ),
                       ] else ...[
