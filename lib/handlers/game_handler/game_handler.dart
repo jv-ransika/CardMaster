@@ -46,12 +46,14 @@ class GameHandler {
 
   bool cameraCaptureRequired = false;
 
+  final Function onGameStarted;
+  final Function onRoundOver;
   final Function onSayTrumpSuit;
   final Function onScoreUpdate;
   final Function(String response) onActionResponse;
   final Future<int> Function(Int64List trumpSuitData, Int64List handData, Int64List deskData, Int64List playedData, List<bool> validActionsData) onGetPredictedCard;
 
-  GameHandler({required this.onSayTrumpSuit, required this.onScoreUpdate, required this.onActionResponse, required this.onGetPredictedCard});
+  GameHandler({required this.onGameStarted, required this.onRoundOver, required this.onSayTrumpSuit, required this.onScoreUpdate, required this.onActionResponse, required this.onGetPredictedCard});
 
   void reset() {
     isValid = false;
@@ -104,13 +106,14 @@ class GameHandler {
           afterAnalyzeActionResponse = () {
             debugPrint("After Analyze Action Response: Card In");
             sendResponseForBtnCardIn();
-            if (_stackCardCount() == 8) {
+            if (stackCardCount() == 8) {
+              onGameStarted();
               currentState = GameState.playingTricks;
             }
             callbackActionResponse();
           };
         } else if (action == BotAction.btnMainPressed) {
-          if (_stackCardCount() == 4) {
+          if (stackCardCount() == 4) {
             debugPrint("Perform: Say Trump Suit");
             String? trump = getTrumpSuit();
             if (trump != null) {
@@ -125,7 +128,7 @@ class GameHandler {
           debugPrint("Perform: Card Out, Waiting for outer camera detection...");
           cameraCaptureRequired = true;
           afterAnalyzeActionResponse = () {
-            if (_deskCardCount() == 4) {
+            if (deskCardCount() == 4) {
               debugPrint("After Analyze Action Response: Determining Trick Scores (4 Cards)");
               String result = getCurrentTrickScores();
               actionResponse = "res-result-$result";
@@ -135,8 +138,9 @@ class GameHandler {
             }
 
             // Detect, round is over
-            if (_deskCardCount() == 4 && _stackCardCount() == 0) {
+            if (deskCardCount() == 4 && stackCardCount() == 0) {
               debugPrint("After Analyze Action Response: Round Over");
+              onRoundOver();
               currentState = GameState.roundOver;
               actionResponse = "$actionResponse-over";
             }
@@ -214,7 +218,7 @@ class GameHandler {
 
   void sendResponseForBtnCardIn() {
     // Resend last card index if exists
-    if (_isCardExistsInStack(currentInputCardSymbol!)) {
+    if (isCardExistsInStack(currentInputCardSymbol!)) {
       debugPrint("Resending last card index for: $currentInputCardSymbol");
       int lastIndex = stack.lastIndexOf(currentInputCardSymbol!);
       actionResponse = "res-in-${lastIndex + 1}";
@@ -243,7 +247,7 @@ class GameHandler {
     // Add other played cards into cardUsedSoFar
     _addOtherPlayedCardsToCardUsedSoFar();
 
-    if (_deskCardCount() > 0) {
+    if (deskCardCount() > 0) {
       // Beginner of current trick is not me
       _determineBeginSuitOfCurrentTrick();
     } else {
@@ -263,7 +267,7 @@ class GameHandler {
     Int64List handData = Int64List.fromList(
       stack.map((card) {
         if (card == null) return 0;
-        return _getCardIndex(card);
+        return getCardIndex(card);
       }).toList(),
     );
 
@@ -273,7 +277,7 @@ class GameHandler {
     if (beginSuitOfCurrentTrick != null) {
       String temp = beginPlayerOfCurrentTrick!;
       for (var i = 0; i < 4; i++) {
-        deskData.add(cardsOnDesk[temp] != null ? _getCardIndex(cardsOnDesk[temp]!) : 0);
+        deskData.add(cardsOnDesk[temp] != null ? getCardIndex(cardsOnDesk[temp]!) : 0);
         temp = nextPlayerOf[temp]!;
       }
     } else {
@@ -284,7 +288,7 @@ class GameHandler {
     // Ex: Int64List(32);
     Int64List playedData = Int64List(32);
     for (var card in cardUsedSoFar) {
-      playedData[_getCardIndex(card)] = 1;
+      playedData[getCardIndex(card)] = 1;
     }
     for (var i = 0; i < labelOrder.length - cardUsedSoFar.length; i++) {
       playedData.add(0); // Padding with 0
@@ -296,16 +300,16 @@ class GameHandler {
 
     String? currentSuit = beginSuitOfCurrentTrick;
 
-    if (currentSuit != null && stack.any((card) => card != null && _getCardSuit(card) == currentSuit)) {
+    if (currentSuit != null && stack.any((card) => card != null && getCardSuit(card) == currentSuit)) {
       for (var card in stack) {
-        if (card != null && _getCardSuit(card) == currentSuit) {
-          validActionsData[_getCardIndex(card)] = true;
+        if (card != null && getCardSuit(card) == currentSuit) {
+          validActionsData[getCardIndex(card)] = true;
         }
       }
     } else {
       for (var card in stack) {
         if (card != null) {
-          validActionsData[_getCardIndex(card)] = true;
+          validActionsData[getCardIndex(card)] = true;
         }
       }
     }
@@ -327,7 +331,7 @@ class GameHandler {
 
     // Set the begin suit of the current trick (begin player "me")
     if (beginPlayerOfCurrentTrick == "me") {
-      beginSuitOfCurrentTrick = _getCardSuit(predictedCard);
+      beginSuitOfCurrentTrick = getCardSuit(predictedCard);
     }
 
     // Add predictedCard to cardUsedSoFar
@@ -339,7 +343,7 @@ class GameHandler {
     actionResponse = "res-out-${stack.indexOf(predictedCard) + 1}";
 
     // Check if all players have played their cards
-    if (_deskCardCount() == 4) {
+    if (deskCardCount() == 4) {
       String result = getCurrentTrickScores();
       actionResponse = "$actionResponse-$result";
     }
@@ -448,8 +452,8 @@ class GameHandler {
       int prevValue = 0;
       for (var card in stack) {
         if (card == null) continue;
-        String suit = _getCardSuit(card);
-        int value = _getCardValue(card);
+        String suit = getCardSuit(card);
+        int value = getCardValue(card);
         if (!maxSuits.contains(suit)) continue;
         if (value > prevValue) {
           prevValue = value;
@@ -463,7 +467,7 @@ class GameHandler {
     // Move through me -> right -> infront -> left, and find the first non-null card
     for (var position in ["me", "right", "infront", "left"]) {
       if (cardsOnDesk[position] != null) {
-        beginSuitOfCurrentTrick = _getCardSuit(cardsOnDesk[position]!);
+        beginSuitOfCurrentTrick = getCardSuit(cardsOnDesk[position]!);
         beginPlayerOfCurrentTrick = position;
         break;
       }
@@ -473,8 +477,8 @@ class GameHandler {
   }
 
   int _cardToMark(String card) {
-    int value = _getCardValue(card);
-    String suit = _getCardSuit(card);
+    int value = getCardValue(card);
+    String suit = getCardSuit(card);
 
     int mark = 0;
 
@@ -489,27 +493,27 @@ class GameHandler {
     return mark;
   }
 
-  String _getCardSuit(String card) {
+  String getCardSuit(String card) {
     return card[0];
   }
 
-  int _getCardValue(String card) {
+  int getCardValue(String card) {
     return valueOrder.indexOf(card[1]) + 1;
   }
 
-  int _getCardIndex(String card) {
+  int getCardIndex(String card) {
     return labelOrder.indexOf(card);
   }
 
-  int _deskCardCount() {
+  int deskCardCount() {
     return cardsOnDesk.values.where((card) => card != null).length;
   }
 
-  bool _isCardExistsInStack(String card) {
+  bool isCardExistsInStack(String card) {
     return stack.contains(card);
   }
 
-  int _stackCardCount() {
+  int stackCardCount() {
     return stack.where((card) => card != null).length;
   }
 
