@@ -30,7 +30,7 @@ class GameHandler {
   String? currentInputCardSymbol;
 
   // List<String?> stack = [null, null, null, null, null, null, null, null]; // Current stack
-  List<String?> stack = ["QH", null, "8H", "7D", "7C", "10S", "KD", "10D"];
+  List<String?> stack = ["AC", "QH", "8S", "10C", null, null, null, null];
   String? trumpSuit = "H"; // Current trump suit
   List<String> cardUsedSoFar = [];
 
@@ -40,7 +40,7 @@ class GameHandler {
   int ourScore = 0;
   int opponentScore = 0;
 
-  GameState? currentState = GameState.playingTricks;
+  GameState? currentState = GameState.waitingForCards;
   String actionResponse = "";
 
   Function? afterAnalyzeActionResponse; // Closure to be executed after analyzing detections
@@ -119,6 +119,7 @@ class GameHandler {
         } else if (action == BotAction.btnMainPressed) {
           if (stackCardCount() == 4) {
             debugPrint("Perform: Say Trump Suit");
+            cameraCaptureRequired = false;
             String? trump = getTrumpSuit();
             if (trump != null) {
               actionResponse = "res-trump-$trump";
@@ -245,6 +246,8 @@ class GameHandler {
   }
 
   void sendResponseForBtnCardIn() {
+    if (currentInputCardSymbol == null) return;
+
     // Resend last card index if exists
     if (isCardExistsInStack(currentInputCardSymbol!)) {
       debugPrint("Resending last card index for: $currentInputCardSymbol");
@@ -339,6 +342,8 @@ class GameHandler {
       }
     }
 
+    debugPrint("Valid actions: $validActionsData");
+
     //=============================================================
 
     int predictedIndex = await onGetPredictedCard(trumpSuitData, handData, deskData, playedData, validActionsData);
@@ -381,7 +386,7 @@ class GameHandler {
 
   String? getTrumpSuit() {
     // Bot need to say the trump if the length of stack is 4 and trumpSuit is not set
-    if (stack.length == 4 && trumpSuit == null) {
+    if (stackCardCount() == 4) {
       _determineTrumpSuit();
       onSayTrumpSuit();
     }
