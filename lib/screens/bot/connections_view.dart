@@ -6,11 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 
 class ConnectionsView extends StatefulWidget {
+  final ConnectionsViewController controller;
+
   final Map<String, ConnectionInputHandler?> deviceInputHandlers = {"Bot": null, "Outer Camera": null, "Inner Camera": null};
 
   Map<String, ConnectionInputHandler> inputHandlers;
 
-  ConnectionsView({super.key, required this.inputHandlers}) {
+  ConnectionsView({super.key, required this.controller, required this.inputHandlers}) {
     deviceInputHandlers["Bot"] = inputHandlers["Bot"] ?? ConnectionInputHandler();
     deviceInputHandlers["Outer Camera"] = inputHandlers["Outer Camera"] ?? ConnectionInputHandler();
     deviceInputHandlers["Inner Camera"] = inputHandlers["Inner Camera"] ?? ConnectionInputHandler();
@@ -60,6 +62,12 @@ class _ConnectionsViewState extends State<ConnectionsView> {
 
   @override
   void initState() {
+    widget.controller.onUpdate = () {
+      deviceAddresses["Bot"] = widget.controller.deviceAddresses["Bot"];
+      deviceAddresses["Outer Camera"] = widget.controller.deviceAddresses["Outer Camera"];
+      deviceAddresses["Inner Camera"] = widget.controller.deviceAddresses["Inner Camera"];
+      setState(() {});
+    };
     super.initState();
   }
 
@@ -389,3 +397,9 @@ class _DeviceItemState extends State<DeviceItem> {
 //     );
 //   }
 // }
+
+class ConnectionsViewController {
+  final Map<String, String?> deviceAddresses = {"Bot": null, "Outer Camera": null, "Inner Camera": null};
+
+  Function? onUpdate;
+}

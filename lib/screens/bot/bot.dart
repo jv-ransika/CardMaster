@@ -62,6 +62,7 @@ class _BotScreenState extends State<BotScreen> {
 
   late GameHandler gameHandler;
 
+  late ConnectionsViewController connectionsViewController;
   late CamerasViewController camerasViewController;
   late GameViewController gameViewController;
   late TestViewController testViewController;
@@ -72,6 +73,8 @@ class _BotScreenState extends State<BotScreen> {
   bool remoteMode = false;
 
   void _initializeTabs() {
+    connectionsViewController = ConnectionsViewController();
+
     camerasViewController = CamerasViewController(
       onNeedUpdateOuterImage: () {
         imageInputHandlerOuter.captureImage();
@@ -114,7 +117,7 @@ class _BotScreenState extends State<BotScreen> {
     };
 
     tabs = [
-      ConnectionsView(inputHandlers: {"Outer Camera": imageInputHandlerOuter, "Inner Camera": imageInputHandlerInner, "Bot": botInputHandler}),
+      ConnectionsView(controller: connectionsViewController, inputHandlers: {"Outer Camera": imageInputHandlerOuter, "Inner Camera": imageInputHandlerInner, "Bot": botInputHandler}),
       GameView(
         controller: gameViewController,
         onReset: () {
@@ -452,6 +455,9 @@ class _BotScreenState extends State<BotScreen> {
           ? QRScanScreen(
               onPairingComplete: (macAddresses) async {
                 deviceAddresses = macAddresses;
+                connectionsViewController.deviceAddresses["Bot"] = deviceAddresses![0];
+                connectionsViewController.deviceAddresses["Inner Camera"] = deviceAddresses![1];
+                connectionsViewController.deviceAddresses["Outer Camera"] = deviceAddresses![2];
                 await _saveDeviceAddresses();
                 setState(() {});
               },
