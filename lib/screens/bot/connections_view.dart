@@ -402,4 +402,8 @@ class ConnectionsViewController {
   final Map<String, String?> deviceAddresses = {"Bot": null, "Outer Camera": null, "Inner Camera": null};
 
   Function? onUpdate;
+
+  void update() {
+    onUpdate?.call();
+  }
 }

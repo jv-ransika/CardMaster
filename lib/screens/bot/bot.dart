@@ -458,6 +458,7 @@ class _BotScreenState extends State<BotScreen> {
                 connectionsViewController.deviceAddresses["Bot"] = deviceAddresses![0];
                 connectionsViewController.deviceAddresses["Inner Camera"] = deviceAddresses![1];
                 connectionsViewController.deviceAddresses["Outer Camera"] = deviceAddresses![2];
+                connectionsViewController.update();
                 await _saveDeviceAddresses();
                 setState(() {});
               },
@@ -484,24 +485,26 @@ class _BotScreenState extends State<BotScreen> {
                 ),
               ],
             ),
-      bottomNavigationBar: BottomNavigationBar(
-        selectedItemColor: Colors.blue,
-        unselectedItemColor: Colors.grey[400],
-        backgroundColor: Theme.of(context).primaryColor,
-        currentIndex: tabIndex,
-        onTap: (int index) {
-          setState(() {
-            tabIndex = index;
-          });
-        },
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.bluetooth), label: 'Connections'),
-          BottomNavigationBarItem(icon: Icon(Icons.gamepad), label: 'Game'),
-          BottomNavigationBarItem(icon: Icon(Icons.camera), label: 'Cameras'),
-          BottomNavigationBarItem(icon: Icon(Icons.troubleshoot), label: 'Test'),
-          BottomNavigationBarItem(icon: Icon(Icons.terminal), label: 'Logs'),
-        ],
-      ),
+      bottomNavigationBar: deviceAddresses == null
+          ? null
+          : BottomNavigationBar(
+              selectedItemColor: Colors.blue,
+              unselectedItemColor: Colors.grey[400],
+              backgroundColor: Theme.of(context).primaryColor,
+              currentIndex: tabIndex,
+              onTap: (int index) {
+                setState(() {
+                  tabIndex = index;
+                });
+              },
+              items: [
+                BottomNavigationBarItem(icon: Icon(Icons.bluetooth), label: 'Connections'),
+                BottomNavigationBarItem(icon: Icon(Icons.gamepad), label: 'Game'),
+                BottomNavigationBarItem(icon: Icon(Icons.camera), label: 'Cameras'),
+                BottomNavigationBarItem(icon: Icon(Icons.troubleshoot), label: 'Test'),
+                BottomNavigationBarItem(icon: Icon(Icons.terminal), label: 'Logs'),
+              ],
+            ),
     );
   }
 }
