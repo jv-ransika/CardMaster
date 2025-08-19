@@ -176,6 +176,7 @@ class _QRScanScreenState extends State<QRScanScreen> {
 
     if (mounted) {
       if (successCount == 3) {
+        widget.onPairingComplete(macAddresses);
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Pairing finished")));
       } else {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Pairing failed. Only $successCount devices paired.")));

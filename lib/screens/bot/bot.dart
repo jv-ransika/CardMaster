@@ -117,7 +117,14 @@ class _BotScreenState extends State<BotScreen> {
     };
 
     tabs = [
-      ConnectionsView(controller: connectionsViewController, inputHandlers: {"Outer Camera": imageInputHandlerOuter, "Inner Camera": imageInputHandlerInner, "Bot": botInputHandler}),
+      ConnectionsView(
+        controller: connectionsViewController,
+        inputHandlers: {"Outer Camera": imageInputHandlerOuter, "Inner Camera": imageInputHandlerInner, "Bot": botInputHandler},
+        onAddressesClearClicked: () async {
+          await _clearCurrentDeviceAddresses();
+          setState(() {});
+        },
+      ),
       GameView(
         controller: gameViewController,
         onReset: () {
@@ -148,6 +155,9 @@ class _BotScreenState extends State<BotScreen> {
   Future<void> _loadDeviceAddresses() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     deviceAddresses = prefs.getStringList('addresses');
+    if (deviceAddresses != null) {
+      updateConnectionsView();
+    }
     isLoadingAddresses = false;
     setState(() {});
   }
@@ -155,7 +165,7 @@ class _BotScreenState extends State<BotScreen> {
   Future<void> _clearCurrentDeviceAddresses() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.remove('addresses');
-    deviceAddresses = [];
+    deviceAddresses = null;
   }
 
   Future<void> _saveDeviceAddresses() async {
@@ -217,6 +227,13 @@ class _BotScreenState extends State<BotScreen> {
     gameViewController.ourScore = gameHandler.ourScore;
     gameViewController.opponentScore = gameHandler.opponentScore;
     gameViewController.update();
+  }
+
+  void updateConnectionsView() {
+    connectionsViewController.deviceAddresses["Bot"] = deviceAddresses![0];
+    connectionsViewController.deviceAddresses["Inner Camera"] = deviceAddresses![1];
+    connectionsViewController.deviceAddresses["Outer Camera"] = deviceAddresses![2];
+    connectionsViewController.update();
   }
 
   //=================
@@ -455,10 +472,7 @@ class _BotScreenState extends State<BotScreen> {
           ? QRScanScreen(
               onPairingComplete: (macAddresses) async {
                 deviceAddresses = macAddresses;
-                connectionsViewController.deviceAddresses["Bot"] = deviceAddresses![0];
-                connectionsViewController.deviceAddresses["Inner Camera"] = deviceAddresses![1];
-                connectionsViewController.deviceAddresses["Outer Camera"] = deviceAddresses![2];
-                connectionsViewController.update();
+                updateConnectionsView();
                 await _saveDeviceAddresses();
                 setState(() {});
               },

@@ -12,7 +12,9 @@ class ConnectionsView extends StatefulWidget {
 
   Map<String, ConnectionInputHandler> inputHandlers;
 
-  ConnectionsView({super.key, required this.controller, required this.inputHandlers}) {
+  final Function onAddressesClearClicked;
+
+  ConnectionsView({super.key, required this.controller, required this.inputHandlers, required this.onAddressesClearClicked}) {
     deviceInputHandlers["Bot"] = inputHandlers["Bot"] ?? ConnectionInputHandler();
     deviceInputHandlers["Outer Camera"] = inputHandlers["Outer Camera"] ?? ConnectionInputHandler();
     deviceInputHandlers["Inner Camera"] = inputHandlers["Inner Camera"] ?? ConnectionInputHandler();
@@ -23,7 +25,7 @@ class ConnectionsView extends StatefulWidget {
 }
 
 class _ConnectionsViewState extends State<ConnectionsView> {
-  final Map<String, String?> deviceAddresses = {"Bot": null, "Outer Camera": "3C:8A:1F:D4:7C:1E", "Inner Camera": null};
+  // final Map<String, String?> deviceAddresses = {"Bot": null, "Outer Camera": "3C:8A:1F:D4:7C:1E", "Inner Camera": null};
   final Map<String, BluetoothConnection?> deviceConnections = {"Bot": null, "Outer Camera": null, "Inner Camera": null};
 
   bool _isRefreshing = false;
@@ -40,11 +42,11 @@ class _ConnectionsViewState extends State<ConnectionsView> {
         .then((List<BluetoothDevice> devices) {
           for (BluetoothDevice device in devices) {
             if (device.name == Config.bleDeviceNameBot) {
-              deviceAddresses["Bot"] = device.address;
+              widget.controller.deviceAddresses["Bot"] = device.address;
             } else if (device.name == Config.bleDeviceNameOuterCamera) {
-              deviceAddresses["Outer Camera"] = device.address;
+              widget.controller.deviceAddresses["Outer Camera"] = device.address;
             } else if (device.name == Config.bleDeviceNameInnerCamera) {
-              deviceAddresses["Inner Camera"] = device.address;
+              widget.controller.deviceAddresses["Inner Camera"] = device.address;
             }
           }
 
@@ -63,9 +65,6 @@ class _ConnectionsViewState extends State<ConnectionsView> {
   @override
   void initState() {
     widget.controller.onUpdate = () {
-      deviceAddresses["Bot"] = widget.controller.deviceAddresses["Bot"];
-      deviceAddresses["Outer Camera"] = widget.controller.deviceAddresses["Outer Camera"];
-      deviceAddresses["Inner Camera"] = widget.controller.deviceAddresses["Inner Camera"];
       setState(() {});
     };
     super.initState();
@@ -103,18 +102,50 @@ class _ConnectionsViewState extends State<ConnectionsView> {
                   mainAxisSpacing: 8,
                   childAspectRatio: 0.9, // Adjust as needed for item size
                 ),
-                itemCount: deviceAddresses.length,
+                itemCount: widget.controller.deviceAddresses.length,
                 itemBuilder: (context, index) {
-                  String key = deviceAddresses.keys.elementAt(index);
+                  String key = widget.controller.deviceAddresses.keys.elementAt(index);
                   return DeviceItem(
                     onConnect: (conn) {
                       deviceConnections[key] = conn;
                     },
                     name: key,
-                    address: deviceAddresses[key],
+                    address: widget.controller.deviceAddresses[key],
                     inputHandler: widget.deviceInputHandlers[key]!,
                   );
                 },
+              ),
+
+              // Address clearing
+              ElevatedButton(
+                onPressed: () {
+                  // Show confirm dialog
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return AlertDialog(
+                        title: Text("Clear Addresses"),
+                        content: Text("Are you sure you want to clear all device addresses?"),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            },
+                            child: Text("Cancel"),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              widget.onAddressesClearClicked();
+                            },
+                            child: Text("Clear"),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+                child: Text("Clear Addresses"),
               ),
             ],
           ),
