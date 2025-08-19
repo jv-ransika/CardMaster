@@ -5,6 +5,7 @@ import 'package:card_master/screens/play/play.dart';
 import 'package:card_master/screens/qr_scan/qr_scan.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,6 +15,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  List<String>? deviceAddresses = [];
+
   Future<void> _getPermissions() async {
     await [Permission.bluetoothScan, Permission.bluetoothConnect, Permission.locationWhenInUse, Permission.camera].request();
   }
