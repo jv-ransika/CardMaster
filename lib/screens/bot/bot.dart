@@ -220,6 +220,11 @@ class _BotScreenState extends State<BotScreen> {
         _updateRemote("Score Updated");
         updateGameView();
       },
+      onCardThrow: () {
+        debugPrint("Card thrown");
+        _updateRemote("Great throw!");
+        updateGameView();
+      },
       onActionResponse: (String response) {
         debugPrint("Action Response: $response");
         botInputHandler.sendString(response);
@@ -342,7 +347,7 @@ class _BotScreenState extends State<BotScreen> {
         case "cmd-cardAv":
           gameHandler.triggerBotAction(BotAction.btnInPressed);
           if (gameHandler.cameraCaptureRequired) {
-            Future.delayed(Duration(milliseconds: 1500), () {
+            Future.delayed(Duration(milliseconds: 2000), () {
               imageInputHandlerInner.captureImage();
             });
           }

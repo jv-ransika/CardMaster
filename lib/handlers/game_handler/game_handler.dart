@@ -53,10 +53,11 @@ class GameHandler {
   final Function onRoundOver;
   final Function onSayTrumpSuit;
   final Function onScoreUpdate;
+  final Function onCardThrow;
   final Function(String response) onActionResponse;
   final Future<int> Function(Int64List trumpSuitData, Int64List handData, Int64List deskData, Int64List playedData, List<bool> validActionsData) onGetPredictedCard;
 
-  GameHandler({required this.onGameStarted, required this.onRoundOver, required this.onSayTrumpSuit, required this.onScoreUpdate, required this.onActionResponse, required this.onGetPredictedCard});
+  GameHandler({required this.onGameStarted, required this.onRoundOver, required this.onSayTrumpSuit, required this.onScoreUpdate, required this.onCardThrow, required this.onActionResponse, required this.onGetPredictedCard});
 
   void reset() {
     isValid = false;
@@ -372,6 +373,8 @@ class GameHandler {
       String result = getCurrentTrickScores();
       actionResponse = "$actionResponse-$result";
     }
+
+    onCardThrow();
 
     debugPrint("Action Response: $actionResponse");
   }
