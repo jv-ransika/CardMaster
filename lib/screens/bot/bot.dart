@@ -42,8 +42,8 @@ class _BotScreenState extends State<BotScreen> {
 
   bool isLoadingModels = true;
 
-  // TfliteModelIsolate yoloModel = TfliteModelIsolate(modelPath: "assets/yolo11s_f32.tflite");
-  TfliteModelIsolate yoloModel = TfliteModelIsolate(modelPath: "assets/yolov5nu_f16.tflite");
+  TfliteModelIsolate yoloModel = TfliteModelIsolate(modelPath: "assets/yolo11s_f32.tflite");
+  // TfliteModelIsolate yoloModel = TfliteModelIsolate(modelPath: "assets/yolov5nu_f16.tflite");
   OnnxModel oomiModel = OnnxModel(modelPath: "assets/oomi_agent.onnx");
 
   YoloDetector yoloDetector = YoloDetector();
@@ -255,6 +255,7 @@ class _BotScreenState extends State<BotScreen> {
         debugPrint("Remote Play Code Received: $code");
       },
       onPaired: () {
+        _updateRemote("Welcome!");
         setState(() {});
         debugPrint("Remote Play Paired");
       },
@@ -283,8 +284,10 @@ class _BotScreenState extends State<BotScreen> {
     imageInputHandlerOuter.listenToOnImageCaptured((int width, int height) async {
       debugPrint("Outer Image Captured: Width: $width, Height: $height");
       _currentImage = imageInputHandlerOuter.image!;
+      // Rotate 180 degrees
+      _currentImage = img.copyRotate(_currentImage!, angle: 180);
       await detectCurrentImage();
-      gameHandler.analyzeOuterCamDetections(yoloDetector.detections!, yoloDetector.processedImage!.width.toDouble(), yoloDetector.processedImage!.height.toDouble());
+      gameHandler.analyzeOuterCamDetections(yoloDetector.detections!);
       //...
       camerasViewController.outerImage = yoloDetector.processedImage;
       camerasViewController.progressOuterImage = 0.0;
@@ -339,7 +342,9 @@ class _BotScreenState extends State<BotScreen> {
         case "cmd-cardAv":
           gameHandler.triggerBotAction(BotAction.btnInPressed);
           if (gameHandler.cameraCaptureRequired) {
-            imageInputHandlerInner.captureImage();
+            Future.delayed(Duration(milliseconds: 1500), () {
+              imageInputHandlerInner.captureImage();
+            });
           }
           break;
         case "cmd-main":

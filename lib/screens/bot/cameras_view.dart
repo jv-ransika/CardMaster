@@ -89,8 +89,7 @@ class _CamerasViewState extends State<CamerasView> {
             const SizedBox(height: 8),
             ElevatedButton(
               onPressed: () {
-                // Add your calibration logic here
-                print("Calibrate Center button pressed");
+                widget.controller.onCalibrateCenterClick();
               },
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
