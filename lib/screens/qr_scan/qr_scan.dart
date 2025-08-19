@@ -16,7 +16,8 @@ class QRScanScreen extends StatefulWidget {
 class _QRScanScreenState extends State<QRScanScreen> {
   final MobileScannerController cameraController = MobileScannerController(facing: CameraFacing.back, torchEnabled: false, detectionSpeed: DetectionSpeed.normal, detectionTimeoutMs: 250);
 
-  Uint8List? lastScanned;
+  // Uint8List? lastScanned;
+  String? lastScanned;
   bool isProcessing = false; // prevent duplicate processing
 
   Future<int> pairDevices(List<String> macAddresses) async {
@@ -81,18 +82,72 @@ class _QRScanScreenState extends State<QRScanScreen> {
     );
   }
 
+  // void _onDetect(BarcodeCapture barcodes) async {
+  //   if (isProcessing) return;
+  //   final List<Barcode> codes = barcodes.barcodes;
+  //   if (codes.isEmpty) return;
+
+  //   final raw = codes.first;
+  //   final Uint8List? code = raw.rawBytes;
+  //   if (code == null || code.isEmpty) return;
+
+  //   debugPrint("QR code raw bytes: $code");
+
+  //   // card_master,<bot_mac>,<ic_mac>,<oc_mac>
+  //   // Ex: 33,44,<68,25,DD,33,87,6E>,<08,B6,1F,8E,7A,4E>,<3C,8A,1F,D4,7C,1E>
+  //   if (!(code.length == 20 && code[0] == 51 && code[1] == 68)) {
+  //     return;
+  //   }
+
+  //   isProcessing = true;
+  //   setState(() => lastScanned = code);
+
+  //   try {
+  //     await services.HapticFeedback.mediumImpact();
+  //   } catch (_) {}
+
+  //   debugPrint('QR code scanned: $code');
+
+  //   final List<String> macAddresses = [String.fromCharCodes(code.sublist(2, 8)), String.fromCharCodes(code.sublist(8, 14)), String.fromCharCodes(code.sublist(14, 20))];
+
+  //   if (macAddresses.isEmpty || macAddresses.length != 3) {
+  //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Invalid Addresses.")));
+  //     isProcessing = false;
+  //     return;
+  //   }
+
+  //   _showPairingDialog(macAddresses);
+
+  //   final successCount = await pairDevices(macAddresses);
+
+  //   if (mounted) Navigator.of(context).pop();
+
+  //   if (mounted) {
+  //     if (successCount == 3) {
+  //       widget.onPairingComplete(macAddresses);
+  //       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Pairing finished")));
+  //     } else {
+  //       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Pairing failed. Only $successCount devices paired.")));
+  //     }
+  //   }
+
+  //   await Future.delayed(const Duration(seconds: 2));
+  //   isProcessing = false;
+  // }
+
   void _onDetect(BarcodeCapture barcodes) async {
     if (isProcessing) return;
     final List<Barcode> codes = barcodes.barcodes;
     if (codes.isEmpty) return;
 
     final raw = codes.first;
-    final Uint8List? code = raw.rawBytes;
+    final String? code = raw.rawValue;
     if (code == null || code.isEmpty) return;
 
     // card_master,<bot_mac>,<ic_mac>,<oc_mac>
-    // Ex: 33,44,<68,25,DD,33,87,6E>,<08,B6,1F,8E,7A,4E>,<3C,8A,1F,D4,7C,1E>
-    if (!(code.length == 20 && code[0] == 33 && code[1] == 44)) {
+    // Ex: card_master,68:25:DD:33:87:6E,08:B6:1F:8E:7A:4E,3C:8A:1F:D4:7C:1E
+    final parts = code.split(',');
+    if (parts.isEmpty || parts.first.trim() != "card_master") {
       return;
     }
 
@@ -105,7 +160,7 @@ class _QRScanScreenState extends State<QRScanScreen> {
 
     debugPrint('QR code scanned: $code');
 
-    final List<String> macAddresses = [String.fromCharCodes(code.sublist(2, 8)), String.fromCharCodes(code.sublist(8, 14)), String.fromCharCodes(code.sublist(14, 20))];
+    final List<String> macAddresses = parts.skip(1).map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
 
     if (macAddresses.isEmpty || macAddresses.length != 3) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Invalid Addresses.")));
@@ -121,7 +176,6 @@ class _QRScanScreenState extends State<QRScanScreen> {
 
     if (mounted) {
       if (successCount == 3) {
-        widget.onPairingComplete(macAddresses);
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Pairing finished")));
       } else {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Pairing failed. Only $successCount devices paired.")));
