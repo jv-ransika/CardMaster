@@ -21,7 +21,7 @@ class GameHandler {
 
   final List<String> suitOrder = ["H", "D", "C", "S"];
   final List<String> valueOrder = ["7", "8", "9", "10", "J", "Q", "K", "A"];
-  final List<String> labelOrder = ["H7", "H8", "H9", "H10", "HJ", "HQ", "HK", "HA", "D7", "D8", "D9", "D10", "DJ", "DQ", "DK", "DA", "C7", "C8", "C9", "C10", "CJ", "CQ", "CK", "CA", "S7", "S8", "S9", "S10", "SJ", "SQ", "SK", "SA"];
+  final List<String> labelOrder = ["7H", "8H", "9H", "10H", "JH", "QH", "KH", "AH", "7D", "8D", "9D", "10D", "JD", "QD", "KD", "AD", "7C", "8C", "9C", "10C", "JC", "QC", "KC", "AC", "7S", "8S", "9S", "10S", "JS", "QS", "KS", "AS"];
   final Map<String, String> nextPlayerOf = {"me": "right", "right": "infront", "infront": "left", "left": "me"};
 
   bool isValid = false;
@@ -29,8 +29,9 @@ class GameHandler {
   final Map<String, String?> cardsOnDesk = {"me": null, "infront": null, "left": null, "right": null};
   String? currentInputCardSymbol;
 
-  List<String?> stack = [null, null, null, null, null, null, null, null]; // Current stack
-  String? trumpSuit; // Current trump suit
+  // List<String?> stack = [null, null, null, null, null, null, null, null]; // Current stack
+  List<String?> stack = ["QH", null, "8H", "7D", "7C", "10S", "KD", "10D"];
+  String? trumpSuit = "H"; // Current trump suit
   List<String> cardUsedSoFar = [];
 
   String? beginSuitOfCurrentTrick;
@@ -39,7 +40,7 @@ class GameHandler {
   int ourScore = 0;
   int opponentScore = 0;
 
-  GameState? currentState = GameState.waitingForCards;
+  GameState? currentState = GameState.playingTricks;
   String actionResponse = "";
 
   Function? afterAnalyzeActionResponse; // Closure to be executed after analyzing detections
@@ -129,14 +130,14 @@ class GameHandler {
         if (action == BotAction.btnMainPressed) {
           debugPrint("Perform: Card Out, Waiting for outer camera detection...");
           cameraCaptureRequired = true;
-          afterAnalyzeActionResponse = () {
+          afterAnalyzeActionResponse = () async {
             if (deskCardCount() == 4) {
               debugPrint("After Analyze Action Response: Determining Trick Scores (4 Cards)");
               String result = getCurrentTrickScores();
-              actionResponse = "res-result-$result";
+              actionResponse = "res-trick-$result";
             } else {
               debugPrint("After Analyze Action Response: Card Out");
-              sendResponseForBtnCardOut();
+              await sendResponseForBtnCardOut();
             }
 
             // Detect, round is over
@@ -144,7 +145,7 @@ class GameHandler {
               debugPrint("After Analyze Action Response: Round Over");
               onRoundOver();
               currentState = GameState.roundOver;
-              actionResponse = "$actionResponse-${getFinalRoundScores()}";
+              actionResponse = "res-game-${getFinalRoundScores()}";
             }
 
             callbackActionResponse();
@@ -160,6 +161,13 @@ class GameHandler {
   void analyzeInnerCamDetections(List<YOLODetection> detections) {
     if (detections.isNotEmpty) {
       currentInputCardSymbol = detections.first.className;
+      if (!labelOrder.contains(currentInputCardSymbol!)) {
+        debugPrint("Invalid card detected: $currentInputCardSymbol");
+        currentInputCardSymbol = null;
+        actionResponse = "res-invalid";
+        callbackActionResponse();
+        return;
+      }
       debugPrint("Current Input Card Symbol: $currentInputCardSymbol");
       performAfterAnalyzeActionResponse();
     } else {
@@ -167,9 +175,9 @@ class GameHandler {
     }
   }
 
-  void analyzeOuterCamDetections(List<YOLODetection> detections, double imgWidth, double imgHeight) {
+  void analyzeOuterCamDetections(List<YOLODetection> detections, {bool lockCallActions = false}) {
     cardsOnDesk.forEach((key, value) {
-      cardsOnDesk[key] = null;
+      if (key != "me") cardsOnDesk[key] = null;
     });
 
     final centers = _calcDistinctClassCenters(detections);
@@ -183,6 +191,7 @@ class GameHandler {
 
     // Map cards to direction based on position relative to board center
     for (var entry in centers.entries) {
+      print(entry);
       String className = entry.key;
       Offset center = entry.value;
 
@@ -198,6 +207,22 @@ class GameHandler {
       } else {
         cardsOnDesk["right"] = className; // Opponent 2's card
       }
+    }
+
+    // Check all not null cards contains in label order
+    bool invalid = false;
+    for (var player in cardsOnDesk.keys) {
+      if (cardsOnDesk[player] != null && !labelOrder.contains(cardsOnDesk[player]!)) {
+        debugPrint("Invalid card detected on $player: ${cardsOnDesk[player]}");
+        cardsOnDesk[player] = null;
+        invalid = true;
+      }
+    }
+
+    if (invalid) {
+      actionResponse = "res-invalid";
+      callbackActionResponse();
+      return;
     }
 
     debugPrint("Cards on Desk: $cardsOnDesk");
@@ -245,7 +270,7 @@ class GameHandler {
     actionResponse = "res-in-${insertedIndex + 1}";
   }
 
-  void sendResponseForBtnCardOut() async {
+  Future<void> sendResponseForBtnCardOut() async {
     // Add other played cards into cardUsedSoFar
     _addOtherPlayedCardsToCardUsedSoFar();
 
@@ -275,15 +300,15 @@ class GameHandler {
 
     // Input: desk (shape [1, 4], type int64)
     // Ex: Int64List.fromList([5, 9, 0, 0]); | <beginPlayerOfCurrentTrick, nextPlayer, nextPlayer, nextPlayer>
-    Int64List deskData = Int64List(0);
+    Int64List deskData = Int64List(4);
     if (beginSuitOfCurrentTrick != null) {
       String temp = beginPlayerOfCurrentTrick!;
       for (var i = 0; i < 4; i++) {
-        deskData.add(cardsOnDesk[temp] != null ? getCardIndex(cardsOnDesk[temp]!) : 0);
+        deskData[i] = (temp != "me" && cardsOnDesk[temp] != null) ? getCardIndex(cardsOnDesk[temp]!) : 0;
         temp = nextPlayerOf[temp]!;
       }
     } else {
-      deskData = [0, 0, 0, 0] as Int64List;
+      deskData = Int64List.fromList([0, 0, 0, 0]);
     }
 
     // Input: played (shape [1, 32], type int64)
@@ -291,9 +316,6 @@ class GameHandler {
     Int64List playedData = Int64List(32);
     for (var card in cardUsedSoFar) {
       playedData[getCardIndex(card)] = 1;
-    }
-    for (var i = 0; i < labelOrder.length - cardUsedSoFar.length; i++) {
-      playedData.add(0); // Padding with 0
     }
 
     // Input: valid_actions (shape [1, 32], type boolean)
@@ -324,9 +346,7 @@ class GameHandler {
     }
 
     String predictedCard = labelOrder[predictedIndex];
-
-    // Remove predictedCard from stack
-    _removeCardFromStack(predictedCard);
+    debugPrint("Predicted card: $predictedCard");
 
     // Update cardsOnDesk for me
     cardsOnDesk["me"] = predictedCard;
@@ -344,11 +364,16 @@ class GameHandler {
     // Set the action response
     actionResponse = "res-out-${stack.indexOf(predictedCard) + 1}";
 
+    // Remove predictedCard from stack
+    _removeCardFromStack(predictedCard);
+
     // Check if all players have played their cards
     if (deskCardCount() == 4) {
       String result = getCurrentTrickScores();
       actionResponse = "$actionResponse-$result";
     }
+
+    debugPrint("Action Response: $actionResponse");
   }
 
   String? getTrumpSuit() {
@@ -412,6 +437,9 @@ class GameHandler {
     }
 
     onScoreUpdate();
+
+    // Clear cardsOnDesk
+    clearDesk();
 
     return res;
   }
@@ -502,11 +530,11 @@ class GameHandler {
   }
 
   String getCardSuit(String card) {
-    return card[0];
+    return card[1];
   }
 
   int getCardValue(String card) {
-    return valueOrder.indexOf(card[1]) + 1;
+    return valueOrder.indexOf(card[0]) + 1;
   }
 
   int getCardIndex(String card) {
@@ -525,9 +553,16 @@ class GameHandler {
     return stack.where((card) => card != null).length;
   }
 
+  void clearDesk() {
+    cardsOnDesk.forEach((player, card) {
+      cardsOnDesk[player] = null;
+    });
+  }
+
   void calcLocalBoardCenter(List<YOLODetection> detections) {
     final centers = _calcDistinctClassCenters(detections);
     boardCenter = Offset(centers.values.map((e) => e.dx).reduce((a, b) => a + b) / centers.length, centers.values.map((e) => e.dy).reduce((a, b) => a + b) / centers.length);
+    print(boardCenter);
   }
 
   Map<String, Offset> _calcDistinctClassCenters(List<YOLODetection> detections) {
