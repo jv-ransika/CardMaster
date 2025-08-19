@@ -61,6 +61,7 @@ class RemotePlayHandler extends ChangeNotifier {
   }
 
   void _handleIncomingJson(Map<String, dynamic> jsonData) {
+    debugPrint("Received WebSocket message: $jsonData");
     switch (jsonData['type']) {
       case 'host_ready':
         myCode = jsonData['code'];
@@ -100,8 +101,15 @@ class RemotePlayHandler extends ChangeNotifier {
     channel?.sink.add('{"type":"join", "code":"$code"}');
   }
 
-  void sendMessage(String msg) {
-    channel?.sink.add('{"type":"message", "text":"$msg"}');
+  void sendMessage(String msgJson) {
+    final wrapper = {
+      "type": "message",
+      "text": msgJson, // keep msgJson as a String
+    };
+
+    final encoded = jsonEncode(wrapper);
+    debugPrint(encoded);
+    channel?.sink.add(encoded);
   }
 
   void disconnect() {
