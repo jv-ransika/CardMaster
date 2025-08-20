@@ -32,6 +32,7 @@ class RemotePlayHandler extends ChangeNotifier {
 
       channel!.stream.listen(
         (message) {
+          debugPrint("WebSocket message received: $message");
           final jsonData = jsonDecode(message.toString());
           _handleIncomingJson(jsonData);
         },

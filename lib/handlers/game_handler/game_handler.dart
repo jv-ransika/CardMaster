@@ -30,7 +30,7 @@ class GameHandler {
   String? currentInputCardSymbol;
 
   // List<String?> stack = [null, null, null, null, null, null, null, null]; // Current stack
-  List<String?> stack = ["7H", "10S", "JC", "QH", "AC", "10C", "9S", "8S"];
+  List<String?> stack = ["10C", "AD", "7S", "QC", "QD", "7H", "JC", "10D"];
   String? trumpSuit = "H"; // Current trump suit
   List<String> cardUsedSoFar = [];
 
@@ -122,7 +122,7 @@ class GameHandler {
             cameraCaptureRequired = false;
             String? trump = await onSayTrumpSuit();
             if (trump != null) {
-              actionResponse = "res-trump-$trump";
+              actionResponse = "res-trump-${trump.toLowerCase()}";
             }
             callbackActionResponse();
           }
