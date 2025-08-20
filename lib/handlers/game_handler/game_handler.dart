@@ -30,7 +30,7 @@ class GameHandler {
   String? currentInputCardSymbol;
 
   // List<String?> stack = [null, null, null, null, null, null, null, null]; // Current stack
-  List<String?> stack = ["AC", "QH", "8S", "10C", null, null, null, null];
+  List<String?> stack = ["7H", "10S", "JC", "QH", "AC", "10C", "9S", "8S"];
   String? trumpSuit = "H"; // Current trump suit
   List<String> cardUsedSoFar = [];
 
@@ -40,7 +40,7 @@ class GameHandler {
   int ourScore = 0;
   int opponentScore = 0;
 
-  GameState? currentState = GameState.waitingForCards;
+  GameState? currentState = GameState.playingTricks;
   String actionResponse = "";
 
   Function? afterAnalyzeActionResponse; // Closure to be executed after analyzing detections
@@ -143,7 +143,7 @@ class GameHandler {
             }
 
             // Detect, round is over
-            if (deskCardCount() == 4 && stackCardCount() == 0) {
+            if (deskCardCount() == 0 && stackCardCount() == 0) {
               debugPrint("After Analyze Action Response: Round Over");
               onRoundOver();
               currentState = GameState.roundOver;
@@ -412,6 +412,7 @@ class GameHandler {
     cardsOnDesk.forEach((player, card) {
       if (card != null) {
         int mark = _cardToMark(card);
+        debugPrint("Player: $player, Card: $card, Mark: $mark");
         if (mark > maxMark) {
           maxMark = mark;
         }
@@ -424,6 +425,8 @@ class GameHandler {
         winners.add(player);
       }
     });
+
+    debugPrint("Winners: $winners");
 
     // Decide result
     if (winners.length > 1) {
@@ -538,11 +541,11 @@ class GameHandler {
   }
 
   String getCardSuit(String card) {
-    return card[1];
+    return card[card.length - 1];
   }
 
   int getCardValue(String card) {
-    return valueOrder.indexOf(card[0]) + 1;
+    return valueOrder.indexOf(card.substring(0, card.length - 1)) + 1;
   }
 
   int getCardIndex(String card) {
