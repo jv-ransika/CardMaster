@@ -376,6 +376,20 @@ class _BotScreenState extends State<BotScreen> {
       camerasViewController.update();
     });
 
+    imageInputHandlerOuter.listenToOnError(() {
+      debugPrint("Outer Image Error");
+      camerasViewController.progressOuterImage = 0.0;
+      camerasViewController.update();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Outer Image Error")));
+    });
+
+    imageInputHandlerInner.listenToOnError(() {
+      debugPrint("Inner Image Error");
+      camerasViewController.progressInnerImage = 0.0;
+      camerasViewController.update();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Inner Image Error")));
+    });
+
     // Bot command listener
 
     botInputHandler.listenToOnLineReceived((String line) {

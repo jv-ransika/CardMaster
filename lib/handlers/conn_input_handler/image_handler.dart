@@ -5,6 +5,7 @@ import 'package:image/image.dart' as img;
 class ImageInputHandler extends ConnectionInputHandler {
   Function(int, int)? onImageCaptured;
   Function(double)? onProgressUpdate;
+  Function? onError;
 
   ImageInputHandler();
 
@@ -26,6 +27,10 @@ class ImageInputHandler extends ConnectionInputHandler {
 
   void listenToOnProgressUpdate(Function(double) callback) {
     onProgressUpdate = callback;
+  }
+
+  void listenToOnError(Function callback) {
+    onError = callback;
   }
 
   void reset() {
@@ -73,13 +78,22 @@ class ImageInputHandler extends ConnectionInputHandler {
           receivingImage = false;
           buffer.clear();
 
-          // Display image
-          image = img.decodeImage(Uint8List.fromList(imageData));
-          // Use Image.memory(img) in your Flutter UI
-          print("Image received: ${image!.lengthInBytes} bytes ($imageWidth x $imageHeight)");
+          try {
+            // Display image
+            image = img.decodeImage(Uint8List.fromList(imageData));
+            // Use Image.memory(img) in your Flutter UI
+            print("Image received: ${image!.lengthInBytes} bytes ($imageWidth x $imageHeight)");
 
-          if (onImageCaptured != null) {
-            onImageCaptured!(imageWidth, imageHeight);
+            if (onImageCaptured != null) {
+              onImageCaptured!(imageWidth, imageHeight);
+            }
+          } catch (e) {
+            print("Error processing image: $e");
+            reset();
+            if (onError != null) {
+              onError!();
+            }
+            return;
           }
         }
 
