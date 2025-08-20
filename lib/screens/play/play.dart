@@ -143,7 +143,7 @@ class _PlayScreenState extends State<PlayScreen> {
         opponentScore: _gameState.opponentScore,
         currentState: _gameState.currentState,
         roundOver: _gameState.roundOver,
-        specialGameStates: ["Your Turn", "Say Trump Suit"],
+        specialGameStates: {"Your Turn": Colors.yellowAccent, "Say Trump Suit": Colors.yellowAccent, "We Won!": Colors.green, "We Lost!": Colors.red},
         onCardClick: (card) {
           if (_gameState.currentState == "Your Turn") {
             remotePlayHandler.sendMessage(jsonEncode({"type": "selected_card", "data": card}));
@@ -153,6 +153,23 @@ class _PlayScreenState extends State<PlayScreen> {
     } else {
       body = const _StatusView(title: "Disconnected", subtitle: "Please try again", showLoader: false);
     }
+
+    // // sample body
+    // body = GameView(
+    //   cardsOnHand: _gameState.cardsOnHand,
+    //   cardsOnDesk: _gameState.cardsOnDesk,
+    //   trumpSuit: _gameState.trumpSuit,
+    //   ourScore: _gameState.ourScore,
+    //   opponentScore: _gameState.opponentScore,
+    //   currentState: "We Lost!",
+    //   roundOver: _gameState.roundOver,
+    //   specialGameStates: {"Your Turn": Colors.yellowAccent, "Say Trump Suit": Colors.yellowAccent, "We Won!": Colors.green, "We Lost!": Colors.red},
+    //   onCardClick: (card) {
+    //     if (_gameState.currentState == "Your Turn") {
+    //       remotePlayHandler.sendMessage(jsonEncode({"type": "selected_card", "data": card}));
+    //     }
+    //   },
+    // );
 
     return PopScope(
       canPop: false,

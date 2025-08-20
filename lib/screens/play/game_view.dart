@@ -9,15 +9,15 @@ class GameView extends StatelessWidget {
   final int ourScore;
   final int opponentScore;
   final String? currentState;
-  final List<String> specialGameStates;
+  final Map<String, Color> specialGameStates;
   final bool roundOver;
 
-  const GameView({Key? key, required this.cardsOnHand, required this.cardsOnDesk, required this.trumpSuit, required this.onCardClick, required this.ourScore, required this.opponentScore, this.currentState, this.specialGameStates = const [], this.roundOver = false}) : assert(cardsOnHand.length == 8, 'cardsOnHand must be 8 elements'), super(key: key);
+  const GameView({Key? key, required this.cardsOnHand, required this.cardsOnDesk, required this.trumpSuit, required this.onCardClick, required this.ourScore, required this.opponentScore, this.currentState, this.specialGameStates = const {}, this.roundOver = false}) : assert(cardsOnHand.length == 8, 'cardsOnHand must be 8 elements'), super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
-    final isSpecialState = currentState != null && specialGameStates.contains(currentState);
+    final isSpecialState = currentState != null && specialGameStates.keys.contains(currentState);
 
     return Scaffold(
       body: Stack(
@@ -53,7 +53,7 @@ class GameView extends StatelessWidget {
                 const SizedBox(height: 16),
 
                 // Current Game State
-                if (currentState != null) SpecialStateText(text: currentState!, isSpecial: isSpecialState),
+                if (currentState != null) SpecialStateText(text: currentState!, isSpecial: isSpecialState, color: specialGameStates[currentState!]!),
 
                 const SizedBox(height: 16),
 
@@ -245,8 +245,9 @@ class _OmiBoardState extends State<OmiBoard> {
 class SpecialStateText extends StatefulWidget {
   final String text;
   final bool isSpecial;
+  final Color color;
 
-  const SpecialStateText({Key? key, required this.text, this.isSpecial = false}) : super(key: key);
+  const SpecialStateText({Key? key, required this.text, this.isSpecial = false, this.color = Colors.yellowAccent}) : super(key: key);
 
   @override
   State<SpecialStateText> createState() => _SpecialStateTextState();
@@ -270,7 +271,7 @@ class _SpecialStateTextState extends State<SpecialStateText> with SingleTickerPr
     _opacityAnim = TweenSequence<double>([TweenSequenceItem(tween: Tween(begin: 0.6, end: 1.0), weight: 50), TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.6), weight: 50)]).animate(_controller);
 
     // Glow color shift
-    _colorAnim = ColorTween(begin: Colors.yellowAccent, end: Colors.white).animate(_controller);
+    _colorAnim = ColorTween(begin: widget.color, end: Colors.white).animate(_controller);
 
     if (widget.isSpecial) {
       _controller.repeat();
@@ -312,10 +313,10 @@ class _SpecialStateTextState extends State<SpecialStateText> with SingleTickerPr
               child: Text(
                 widget.text,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 25,
                   fontWeight: FontWeight.bold,
-                  color: Colors.yellowAccent,
+                  color: widget.color,
                   letterSpacing: 1.2,
                   shadows: [Shadow(color: Colors.black54, offset: Offset(2, 2), blurRadius: 4)],
                 ),

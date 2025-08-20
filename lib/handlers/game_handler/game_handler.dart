@@ -49,6 +49,8 @@ class GameHandler {
 
   Offset boardCenter = Offset(320, 320);
 
+  String? ourWinState; // Used to send to remote player
+
   final Function onGameStarted;
   final Function onRoundOver;
   final Future<String?> Function() onSayTrumpSuit;
@@ -437,10 +439,12 @@ class GameHandler {
 
       if (maxPlayer == "me" || maxPlayer == "infront") {
         ourScore += 1;
+        ourWinState = "w";
         res = "w";
         debugPrint("We won the trick! Score: $ourScore, Opponent Score: $opponentScore");
       } else {
         opponentScore += 1;
+        ourWinState = "l";
         res = "l";
         debugPrint("We lost the trick! Our Score: $ourScore, Opponent Score: $opponentScore");
       }

@@ -277,7 +277,13 @@ class _BotScreenState extends State<BotScreen> {
       },
       onScoreUpdate: () {
         debugPrint("Score Updated");
-        _updateRemote("Score Updated");
+        if (gameHandler.ourWinState == "w") {
+          _updateRemote("We Won!");
+        } else if (gameHandler.ourWinState == "l") {
+          _updateRemote("We Lost!");
+        } else {
+          _updateRemote("Score Updated");
+        }
         updateGameView();
       },
       onCardThrow: () {
