@@ -51,7 +51,7 @@ class GameHandler {
 
   final Function onGameStarted;
   final Function onRoundOver;
-  final Function onSayTrumpSuit;
+  final Future<String?> Function() onSayTrumpSuit;
   final Function onScoreUpdate;
   final Function onCardThrow;
   final Function(String response) onActionResponse;
@@ -99,7 +99,7 @@ class GameHandler {
     debugPrint("Opponent Score: $opponentScore");
   }
 
-  void triggerBotAction(BotAction action) {
+  void triggerBotAction(BotAction action) async {
     debugPrint("Bot Action: $action");
 
     switch (currentState!) {
@@ -120,7 +120,7 @@ class GameHandler {
           if (stackCardCount() == 4) {
             debugPrint("Perform: Say Trump Suit");
             cameraCaptureRequired = false;
-            String? trump = getTrumpSuit();
+            String? trump = await onSayTrumpSuit();
             if (trump != null) {
               actionResponse = "res-trump-$trump";
             }
@@ -388,7 +388,6 @@ class GameHandler {
     // Bot need to say the trump if the length of stack is 4 and trumpSuit is not set
     if (stackCardCount() == 4) {
       _determineTrumpSuit();
-      onSayTrumpSuit();
     }
 
     return trumpSuit;

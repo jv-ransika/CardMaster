@@ -206,6 +206,9 @@ class _BotScreenState extends State<BotScreen> {
     if (json['type'] == 'selected_card') {
       result = json['data'];
       debugPrint("Remote player selected card: $result");
+    } else if (json['type'] == 'trump_suit') {
+      result = json['data'];
+      debugPrint("Remote player said trump suit: $result");
     }
 
     if (result != null && _remoteResponseCompleter != null) {
@@ -255,10 +258,20 @@ class _BotScreenState extends State<BotScreen> {
         _updateRemote("Game Started");
         updateGameView();
       },
-      onSayTrumpSuit: () {
-        debugPrint("Trump Suittt: ${gameHandler.trumpSuit}");
-        _updateRemote("Trump Suit Updated");
-        updateGameView();
+      onSayTrumpSuit: () async {
+        if (!remoteMode) {
+          String? trump = gameHandler.getTrumpSuit();
+          debugPrint("Trump Suit: ${gameHandler.trumpSuit}");
+          _updateRemote("Trump Suit Updated");
+          updateGameView();
+          return trump;
+        } else {
+          debugPrint("Requesting card from remote player...");
+          _remoteResponseCompleter = Completer<String>();
+          _updateRemote("Say Trump Suit");
+          String suit = await _remoteResponseCompleter!.future;
+          return suit;
+        }
       },
       onScoreUpdate: () {
         debugPrint("Score Updated");
