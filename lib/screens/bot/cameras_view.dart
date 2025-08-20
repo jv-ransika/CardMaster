@@ -73,7 +73,7 @@ class _CamerasViewState extends State<CamerasView> {
                   Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const Spacer(),
                   ElevatedButton(
-                    onPressed: isUpdating ? null : onUpdatePressed,
+                    onPressed: onUpdatePressed,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       textStyle: const TextStyle(fontSize: 16),
@@ -124,7 +124,7 @@ class _CamerasViewState extends State<CamerasView> {
                   Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const Spacer(),
                   ElevatedButton(
-                    onPressed: isUpdating ? null : onUpdatePressed,
+                    onPressed: onUpdatePressed,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       textStyle: const TextStyle(fontSize: 16),
