@@ -219,8 +219,9 @@ class _BotScreenState extends State<BotScreen> {
 
   //=================
 
-  void setCurrentTrump(String suit) {
+  void setCurrentTrump(String? suit) {
     gameHandler.trumpSuit = suit;
+    _updateRemote("Trump Suit Updated");
     updateGameView();
   }
 
@@ -270,6 +271,7 @@ class _BotScreenState extends State<BotScreen> {
           _remoteResponseCompleter = Completer<String>();
           _updateRemote("Say Trump Suit");
           String suit = await _remoteResponseCompleter!.future;
+          setCurrentTrump(suit);
           return suit;
         }
       },
@@ -522,6 +524,12 @@ class _BotScreenState extends State<BotScreen> {
                       ),
                     ],
                   ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    _updateRemote("Say Trump Suit");
+                  },
+                  child: const Text("Send Message"),
                 ),
                 Expanded(
                   child: IndexedStack(index: tabIndex, children: tabs),

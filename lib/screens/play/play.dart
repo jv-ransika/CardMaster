@@ -16,11 +16,63 @@ class _PlayScreenState extends State<PlayScreen> {
   final TextEditingController _codeController = TextEditingController();
   bool joining = false; // waiting for host confirmation
 
-  final _GameState _gameState = _GameState();
+  late _GameState _gameState;
+
+  void showTrumpSuitSelection() {
+    final suits = {
+      'H': {'name': 'Hearts', 'symbol': '♥', 'color': Colors.red},
+      'D': {'name': 'Diamonds', 'symbol': '♦', 'color': Colors.red},
+      'C': {'name': 'Clubs', 'symbol': '♣', 'color': Colors.black},
+      'S': {'name': 'Spades', 'symbol': '♠', 'color': Colors.black},
+    };
+
+    showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Center(
+            child: Text("Select Trump Suit", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: suits.entries.map((entry) {
+                final code = entry.key;
+                final data = entry.value;
+                return Card(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 3,
+                  margin: const EdgeInsets.symmetric(vertical: 6),
+                  child: ListTile(
+                    leading: Text(
+                      data['symbol'] as String,
+                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: data['color'] as Color),
+                    ),
+                    title: Text(data['name'] as String, style: const TextStyle(fontSize: 18)),
+                    onTap: () {
+                      Navigator.of(context).pop(code);
+                      remotePlayHandler.sendMessage(jsonEncode({"type": "trump_suit", "data": code}));
+                    },
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   @override
   void initState() {
     super.initState();
+    _gameState = _GameState(
+      onTrumpSuitRequest: () {
+        showTrumpSuitSelection();
+      },
+    );
+
     remotePlayHandler = RemotePlayHandler(
       onConnected: () => setState(() {}),
       onCodeReceived: (_) {}, // not needed on client
@@ -91,30 +143,16 @@ class _PlayScreenState extends State<PlayScreen> {
         opponentScore: _gameState.opponentScore,
         currentState: _gameState.currentState,
         roundOver: _gameState.roundOver,
-        specialGameStates: ["Your Turn"],
+        specialGameStates: ["Your Turn", "Say Trump Suit"],
         onCardClick: (card) {
-          if (_gameState.currentState != "Your Turn") return;
-          remotePlayHandler.sendMessage(jsonEncode({"type": "selected_card", "data": card}));
+          if (_gameState.currentState != "Your Turn") {
+            remotePlayHandler.sendMessage(jsonEncode({"type": "selected_card", "data": card}));
+          }
         },
       );
     } else {
       body = const _StatusView(title: "Disconnected", subtitle: "Please try again", showLoader: false);
     }
-
-    // body = GameView(
-    //   cardsOnHand: ["7D", null, null, null, null, null, null, null],
-    //   cardsOnDesk: {"me": "5H", "infront": "9C", "left": "3D", "right": "7S"},
-    //   trumpSuit: "C",
-    //   ourScore: 2,
-    //   opponentScore: 3,
-    //   currentState: "Your Turn",
-    //   roundOver: false,
-    //   specialGameStates: ["Your Turn"],
-    //   onCardClick: (card) {
-    //     if (_gameState.currentState != "Your Turn") return;
-    //     remotePlayHandler.sendMessage(jsonEncode({"type": "selected_card", "data": card}));
-    //   },
-    // );
 
     return PopScope(
       canPop: false,
@@ -233,6 +271,10 @@ class _GameState {
   String currentState = "Waiting";
   bool roundOver = false;
 
+  final Function onTrumpSuitRequest;
+
+  _GameState({required this.onTrumpSuitRequest});
+
   void handleMessage(String message) {
     final json = jsonDecode(message);
     if (json['type'] == 'game_state') {
@@ -260,6 +302,9 @@ class _GameState {
           break;
         case 'currentState':
           currentState = entry.value;
+          if (currentState == "Say Trump Suit") {
+            onTrumpSuitRequest();
+          }
           break;
         case 'roundOver':
           roundOver = entry.value;
