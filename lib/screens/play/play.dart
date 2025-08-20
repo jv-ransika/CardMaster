@@ -328,5 +328,10 @@ class _GameState {
           break;
       }
     }
+
+    if (!["Your Turn", "We Won!", "We Lost!", "Round Over"].contains(data['currentState'])) {
+      // Show empty desk
+      cardsOnDesk = {"me": null, "infront": null, "left": null, "right": null};
+    }
   }
 }

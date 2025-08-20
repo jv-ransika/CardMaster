@@ -51,6 +51,7 @@ class GameHandler {
 
   String? ourWinState; // Used to send to remote player
 
+  final Function onCardInserted;
   final Function onGameStarted;
   final Function onRoundOver;
   final Future<String?> Function() onSayTrumpSuit;
@@ -59,7 +60,7 @@ class GameHandler {
   final Function(String response) onActionResponse;
   final Future<int> Function(Int64List trumpSuitData, Int64List handData, Int64List deskData, Int64List playedData, List<bool> validActionsData) onGetPredictedCard;
 
-  GameHandler({required this.onGameStarted, required this.onRoundOver, required this.onSayTrumpSuit, required this.onScoreUpdate, required this.onCardThrow, required this.onActionResponse, required this.onGetPredictedCard});
+  GameHandler({required this.onCardInserted, required this.onGameStarted, required this.onRoundOver, required this.onSayTrumpSuit, required this.onScoreUpdate, required this.onCardThrow, required this.onActionResponse, required this.onGetPredictedCard});
 
   void reset() {
     isValid = false;
@@ -145,10 +146,9 @@ class GameHandler {
             }
 
             // Detect, round is over
-            if (deskCardCount() == 0 && stackCardCount() == 0) {
+            if (currentState == GameState.roundOver) {
               debugPrint("After Analyze Action Response: Round Over");
               onRoundOver();
-              currentState = GameState.roundOver;
               actionResponse = "res-game-${getFinalRoundScores()}";
             }
 
@@ -272,6 +272,8 @@ class GameHandler {
         break;
       }
     }
+
+    onCardInserted();
 
     actionResponse = "res-in-${insertedIndex + 1}";
   }
@@ -448,6 +450,10 @@ class GameHandler {
         res = "l";
         debugPrint("We lost the trick! Our Score: $ourScore, Opponent Score: $opponentScore");
       }
+    }
+
+    if (stackCardCount() == 0) {
+      currentState = GameState.roundOver;
     }
 
     onScoreUpdate();

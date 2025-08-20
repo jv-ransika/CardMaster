@@ -254,6 +254,11 @@ class _BotScreenState extends State<BotScreen> {
 
     // GameHandler
     gameHandler = GameHandler(
+      onCardInserted: () {
+        debugPrint("Card inserted");
+        _updateRemote("New Card");
+        updateGameView();
+      },
       onGameStarted: () {
         debugPrint("Game Started");
         _updateRemote("Game Started");
@@ -309,7 +314,6 @@ class _BotScreenState extends State<BotScreen> {
       },
       onRoundOver: () {
         debugPrint("Round Over");
-        _updateRemote("Round Over");
         updateGameView();
       },
     );
