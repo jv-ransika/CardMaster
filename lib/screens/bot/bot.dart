@@ -525,12 +525,12 @@ class _BotScreenState extends State<BotScreen> {
                     ],
                   ),
                 ),
-                ElevatedButton(
-                  onPressed: () {
-                    _updateRemote("Say Trump Suit");
-                  },
-                  child: const Text("Send Message"),
-                ),
+                // ElevatedButton(
+                //   onPressed: () {
+                //     _updateRemote("Say Trump Suit");
+                //   },
+                //   child: const Text("Send Message"),
+                // ),
                 Expanded(
                   child: IndexedStack(index: tabIndex, children: tabs),
                 ),
