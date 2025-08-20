@@ -400,7 +400,9 @@ class _BotScreenState extends State<BotScreen> {
         case "cmd-main":
           gameHandler.triggerBotAction(BotAction.btnMainPressed);
           if (gameHandler.cameraCaptureRequired) {
-            imageInputHandlerOuter.captureImage();
+            Future.delayed(Duration(milliseconds: 2000), () {
+              imageInputHandlerOuter.captureImage();
+            });
           }
           break;
         //======================================
