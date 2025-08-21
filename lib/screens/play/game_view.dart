@@ -53,7 +53,7 @@ class GameView extends StatelessWidget {
                 const SizedBox(height: 16),
 
                 // Current Game State
-                if (currentState != null) SpecialStateText(text: currentState!, isSpecial: isSpecialState, color: specialGameStates[currentState!]!),
+                if (currentState != null) SpecialStateText(text: currentState!, isSpecial: isSpecialState, color: specialGameStates[currentState!] ?? Colors.yellowAccent),
 
                 const SizedBox(height: 16),
 
