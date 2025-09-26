@@ -52,7 +52,35 @@ To design and develop an **AI-powered interactive robot** capable of:
 - **Inventor** – Mechanical design and 3D modeling.  
 - **Python + PyTorch** – AI agent training.  
 - **Roboflow + Kaggle** – Dataset preparation & training.  
-- **Mobile/Desktop App** – Remote play integration.  
+- **Flutter + TFLite + ONNX Runtime** – Mobile app for detection, prediction, and hardware control.  
+
+---
+
+## 📱 Mobile App
+
+To power the entire system, a **Flutter application** was built with **TensorFlow Lite** and **ONNX Runtime** for running the models directly on-device.  
+The app serves as the **central controller** for all three connected devices:
+
+- 🤖 **Bot** – Handles motor actions and card output.  
+- 📷 **Inner Camera** – Recognizes the robot’s own cards.  
+- 📷 **Outer Camera** – Monitors the gameplay table.  
+
+### 🔗 Connectivity
+- Each device is connected to the app through **separate Bluetooth links**.  
+- The app manages synchronization of **hardware actions** and **camera detections** in real time.  
+
+### 🎮 Modes
+1. **AI Mode**  
+   - The bot autonomously predicts the best card using past game data and the current desk state.  
+   - All actions (detection, selection, deployment) are executed automatically.  
+
+2. **Remote Mode**  
+   - A remote player can connect to the app using a **pairing code** through the internet.  
+   - The player interacts with a **graphical Omi environment** inside the app.  
+   - The robot mirrors the player’s actions physically by throwing the selected card.  
+
+### 📸 The App
+![The App](docs/app_ui.png)
 
 ---
 
@@ -62,9 +90,9 @@ To design and develop an **AI-powered interactive robot** capable of:
 ![Block Diagram](docs/block_diagram.png)
 
 ### 3D Model  
-![3D Model](docs/3d_design_1.png)
-![3D Model](docs/3d_design_2.png)
-![3D Model](docs/3d_design_3.png)
+![3D Model](docs/3d_design_1.png)  
+![3D Model](docs/3d_design_2.png)  
+![3D Model](docs/3d_design_3.png)  
 ![3D Model](docs/3d_design_4.png)
 
 ---
