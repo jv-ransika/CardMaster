@@ -96,6 +96,14 @@ Supervisor: **Mr. B. H. Sudantha**
 
 ---
 
+## 📸 Evaluation Day
+
+<p align="center">
+  <img src="docs/evaluation_day.jpg" alt="Team Zero Five - Evaluation Day" width="70%"/>
+</p>
+
+---
+
 ## 📚 References
 
 - [Playing Cards Dataset – Roboflow](https://universe.roboflow.com/joshuas-workspace/playing-cards-9gfac)  
