@@ -62,7 +62,10 @@ To design and develop an **AI-powered interactive robot** capable of:
 ![Block Diagram](docs/block_diagram.png)
 
 ### 3D Model  
-![3D Model](docs/3d_model.png)
+![3D Model](docs/3d_design_1.png)
+![3D Model](docs/3d_design_2.png)
+![3D Model](docs/3d_design_3.png)
+![3D Model](docs/3d_design_4.png)
 
 ---
 
